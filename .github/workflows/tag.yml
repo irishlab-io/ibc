@@ -39,18 +39,22 @@ jobs:
 
       - name: Get CHANGELOG
         id: generate_notes
-        uses: anmarkoulis/commitizen-changelog-reader@0d1f06b1c3de81073cf4168c227268c6dd2bfa04 # v1.2.0
+        uses: anmarkoulis/commitizen-changelog-reader@0d1f06b1c3de81073cf4168c227268c6dd2bfa04
+        # v1.2.0
         with:
           tag_name: ${{ github.ref }}
           changelog: CHANGELOG.md
 
       - name: Update CHANGELOG
         run: |
-          echo "${{join(fromJson(steps.generate_notes.outputs.notes).notes, '')}}" > ${{ github.workspace }}-GH_CHANGELOG.md
+          echo "${{join(fromJson(steps.generate_notes.outputs.notes).notes, '')}}" \
+            > ${{ github.workspace }}-GH_CHANGELOG.md
 
       - name: Install Syft
         run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          curl -sSfL \
+            https://raw.githubusercontent.com/anchore/syft/main/install.sh \
+            | sh -s -- -b /usr/local/bin
         shell: bash
 
       - name: Generate SBOM
@@ -61,7 +65,8 @@ jobs:
         shell: bash
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
+        # v2.5.0
         if: github.ref_type == 'tag'
         with:
           body_path: ${{ github.workspace }}-GH_CHANGELOG.md

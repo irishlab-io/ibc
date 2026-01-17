@@ -56,7 +56,9 @@ jobs:
 
       - name: Install Grype
         run: |
-          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          curl -sSfL \
+            https://raw.githubusercontent.com/anchore/grype/main/install.sh \
+            | sh -s -- -b /usr/local/bin
         shell: bash
 
       - name: Download SBOM from Release
@@ -64,27 +66,31 @@ jobs:
         run: |
           # Get the version tag from image-tag input (e.g., v0.2.0)
           IMAGE_TAG="${{ inputs.image-tag }}"
-          
+
           # Try to determine version from image tag
           if [[ "$IMAGE_TAG" =~ ^v?([0-9]+\.[0-9]+\.[0-9]+) ]]; then
             VERSION="${BASH_REMATCH[1]}"
             echo "Detected version: v${VERSION}"
           else
+            # Cannot determine version from image-tag, try latest release
             echo "::warning::Cannot determine version from image-tag '$IMAGE_TAG', will try to get latest release"
             # Get the latest release tag
-            VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+            VERSION=$(curl -s \
+              https://api.github.com/repos/${{ github.repository }}/releases/latest \
+              | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
             if [ -z "$VERSION" ]; then
               echo "::error::Could not determine version from image-tag or latest release"
               exit 1
             fi
           fi
-          
+
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          
+
           # Download SBOM file from release
-          SBOM_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/sbom-v${VERSION}.spdx.json"
+          REPO="${{ github.repository }}"
+          SBOM_URL="https://github.com/${REPO}/releases/download/v${VERSION}/sbom-v${VERSION}.spdx.json"
           echo "Downloading SBOM from: $SBOM_URL"
-          
+
           if curl -f -L -o sbom.spdx.json "$SBOM_URL"; then
             echo "Successfully downloaded SBOM"
             ls -lh sbom.spdx.json
@@ -100,13 +106,13 @@ jobs:
         id: sbom
         run: |
           echo "Scanning SBOM for vulnerabilities..."
-          
+
           # Run grype on the SBOM file
           # Using fail-on=high to fail on high and critical vulnerabilities
           grype sbom:sbom.spdx.json -o table --fail-on high
-          
+
           SCAN_EXIT_CODE=$?
-          
+
           if [ $SCAN_EXIT_CODE -ne 0 ]; then
             echo "::warning::Vulnerabilities detected in SBOM"
             exit 1
@@ -122,7 +128,7 @@ jobs:
           echo "Generating detailed vulnerability report..."
           grype sbom:sbom.spdx.json -o json > vulnerability-report.json
           grype sbom:sbom.spdx.json -o table > vulnerability-report.txt
-          
+
           echo "=== Vulnerability Summary ==="
           cat vulnerability-report.txt
         shell: bash
@@ -130,7 +136,8 @@ jobs:
 
       - name: Upload Vulnerability Report
         if: always() && steps.download_sbom.outcome == 'success'
-        uses: actions/upload-artifact@ea054db2c1ae17326690e2235a43c0047d6e397e # v4.6.0
+        uses: actions/upload-artifact@ea054db2c1ae17326690e2235a43c0047d6e397e
+        # v4.6.0
         with:
           name: vulnerability-report-${{ inputs.env }}
           path: |
