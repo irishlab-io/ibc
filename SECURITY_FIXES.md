@@ -257,7 +257,17 @@ STATIC_ROOT = Path(tempfile.gettempdir()) / "ibc_test_static"
 
 ---
 
-### 4. pycrypto 2.6.1 → REMOVED
+### 4. sqlparse 0.4.2 → 0.5.0
+
+**Vulnerabilities**:
+- Denial of Service via parsing heavily nested lists
+- Could cause application hang or crash
+
+**Fix**: Updated to sqlparse 0.5.0 with improved parsing safeguards
+
+---
+
+### 5. pycrypto 2.6.1 → REMOVED
 
 **Vulnerabilities**:
 - Multiple buffer overflows
@@ -270,7 +280,7 @@ STATIC_ROOT = Path(tempfile.gettempdir()) / "ibc_test_static"
 
 ---
 
-### 5. httplib2 0.14.0 → REMOVED
+### 6. httplib2 0.14.0 → REMOVED
 
 **Vulnerabilities**:
 - Regular Expression Denial of Service (ReDoS)
@@ -280,7 +290,7 @@ STATIC_ROOT = Path(tempfile.gettempdir()) / "ibc_test_static"
 
 ---
 
-### 6. urllib3 1.24.3 → REMOVED
+### 7. urllib3 1.24.3 → REMOVED
 
 **Vulnerabilities**:
 - Cookie header not stripped on cross-origin redirects
