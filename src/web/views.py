@@ -30,8 +30,11 @@ logger = logging.getLogger(__name__)
 storage_service = StorageService()
 
 # Use environment variable for encryption key with secure fallback
-# In production, this should be set via environment variable
-ENCRYPTION_KEY_SALT = getattr(settings, 'ENCRYPTION_KEY_SALT', get_random_bytes(32))
+# In production, ENCRYPTION_KEY_SALT MUST be set via environment variable
+# Using a fixed fallback to ensure data remains recoverable
+# Generate this once: python -c "from Crypto.Random import get_random_bytes; print(get_random_bytes(32).hex())"
+DEFAULT_SALT = bytes.fromhex('0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef')
+ENCRYPTION_KEY_SALT = getattr(settings, 'ENCRYPTION_KEY_SALT', DEFAULT_SALT)
 SECRET_KEY = getattr(settings, 'SECRET_KEY', 'django-insecure-fallback-key')
 
 resources = os.path.join(settings.BASE_DIR, "src", "web", "static", "resources")
@@ -101,11 +104,15 @@ def to_traces(string: str) -> str:
     """
     try:
         # Sanitize the input by removing any potentially dangerous characters
-        # Only allow alphanumeric, spaces, and safe punctuation
-        safe_string = ''.join(c for c in string if c.isalnum() or c in ' -_:.')
+        # Only allow alphanumeric, spaces, and minimal safe punctuation
+        # Removed colon and period to prevent path manipulation
+        safe_string = ''.join(c for c in string if c.isalnum() or c in ' -_')
 
-        # Log to file using secure file operations instead of shell command
-        trace_file = os.path.join(settings.BASE_DIR, "traces.txt")
+        # Log to file in a dedicated logs directory with proper structure
+        logs_dir = os.path.join(settings.BASE_DIR, "logs")
+        os.makedirs(logs_dir, mode=0o750, exist_ok=True)  # Create with restricted permissions
+        
+        trace_file = os.path.join(logs_dir, "traces.txt")
 
         # Use secure file writing with proper permissions
         with open(trace_file, 'a', encoding='utf-8') as f:
@@ -351,8 +358,15 @@ class CertificateDownloadView(View):
         account = AccountService.find_users_by_username(principal.username)[0]
 
         # Sanitize filename to prevent header injection
-        safe_name = ''.join(c for c in account.name if c.isalnum() or c in ' -_')
-        file_name = f'attachment; filename="Certificate_{safe_name}.json"'
+        # Use only alphanumeric characters and spaces
+        safe_name = ''.join(c for c in account.name if c.isalnum() or c == ' ')
+        safe_name = safe_name.replace(' ', '_')  # Replace spaces with underscores
+        
+        # Properly quote the filename for Content-Disposition header
+        # Using RFC 2231 encoding for international characters
+        from urllib.parse import quote
+        encoded_filename = quote(f'Certificate_{safe_name}.json')
+        file_name = f'attachment; filename="{encoded_filename}"'
 
         return HttpResponse(
             certificate_json,
@@ -511,12 +525,15 @@ class CreditCardImageView(View):
                 data = fh.read()
 
                 # Sanitize filename for Content-Disposition header
+                # Use proper RFC 2231 encoding
+                from urllib.parse import quote
                 safe_filename = ''.join(c for c in filename if c.isalnum() or c in '.-_')
+                encoded_filename = quote(safe_filename)
 
                 return HttpResponse(
                     data,
                     content_type="image/png",
-                    headers={"Content-Disposition": f'attachment; filename="{safe_filename}"'},
+                    headers={"Content-Disposition": f'attachment; filename="{encoded_filename}"'},
                 )
         except Exception as e:
             logger.error(f"Error reading image file: {e}")

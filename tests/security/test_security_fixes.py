@@ -8,12 +8,21 @@ and that the application now follows secure coding best practices.
 import json
 import os
 import tempfile
+from pathlib import Path
 from unittest.mock import Mock, patch, mock_open
 
 import pytest
 from django.test import TestCase, RequestFactory
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest
+
+
+# Helper function to get views.py content
+def get_views_file_content():
+    """Get the content of views.py file."""
+    views_path = Path(__file__).parent.parent.parent / 'src' / 'web' / 'views.py'
+    with open(views_path, 'r') as f:
+        return f.read()
 
 
 class TestSecurityFixes(TestCase):
@@ -93,9 +102,8 @@ class TestSecurityFixes(TestCase):
 
     def test_no_pickle_import_in_views(self):
         """Test that pickle module is not imported in views.py."""
-        with open('src/web/views.py', 'r') as f:
-            content = f.read()
-            
+        content = get_views_file_content()
+        
         # Verify pickle is not imported
         self.assertNotIn('import pickle', content)
         self.assertNotIn('from pickle', content)
@@ -106,9 +114,8 @@ class TestSecurityFixes(TestCase):
         
         Validates fix for CWE-327 (Weak Cryptography).
         """
-        with open('src/web/views.py', 'r') as f:
-            content = f.read()
-            
+        content = get_views_file_content()
+        
         # Verify AES is used
         self.assertIn('from Crypto.Cipher import AES', content)
         self.assertIn('AES.MODE_GCM', content)
@@ -119,9 +126,8 @@ class TestSecurityFixes(TestCase):
 
     def test_no_hardcoded_encryption_key(self):
         """Test that there are no hardcoded encryption keys."""
-        with open('src/web/views.py', 'r') as f:
-            content = f.read()
-            
+        content = get_views_file_content()
+        
         # Verify the old hardcoded key is not present
         self.assertNotIn('bytes("01234567"', content)
         self.assertNotIn('"01234567"', content)
@@ -290,17 +296,15 @@ class TestSecurityImprovements:
 
     def test_no_os_system_calls(self):
         """Verify that os.system is not used in views.py."""
-        with open('src/web/views.py', 'r') as f:
-            content = f.read()
-            
+        content = get_views_file_content()
+        
         # Should not contain direct os.system calls
         assert 'os.system(' not in content, "os.system() should not be used"
 
     def test_uses_modern_cryptography(self):
         """Verify modern cryptography is used."""
-        with open('src/web/views.py', 'r') as f:
-            content = f.read()
-            
+        content = get_views_file_content()
+        
         # Should use modern algorithms
         assert 'AES' in content
         assert 'PBKDF2' in content
@@ -311,9 +315,8 @@ class TestSecurityImprovements:
 
     def test_safe_serialization(self):
         """Verify safe serialization is used."""
-        with open('src/web/views.py', 'r') as f:
-            content = f.read()
-            
+        content = get_views_file_content()
+        
         # Should use JSON
         assert 'import json' in content
         assert 'json.dumps' in content
