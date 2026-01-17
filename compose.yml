@@ -10,6 +10,9 @@ services:
       - 8000:8000
     networks:
       - cloudflared
+    # Health check configuration for Docker Compose orchestration
+    # Note: This duplicates the Dockerfile HEALTHCHECK but allows
+    # Docker Compose to track and report container health status
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/login"]
       interval: 10s

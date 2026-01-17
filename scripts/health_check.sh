@@ -58,7 +58,7 @@ get_container_status() {
 
 # Get list of containers from compose project
 echo "Retrieving container list from project: ${COMPOSE_PROJECT}"
-containers=$(docker ps -a --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" --format '{{.Names}}' 2>/dev/null || echo "")
+containers=$(docker ps --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" --format '{{.Names}}' 2>/dev/null || echo "")
 
 if [ -z "${containers}" ]; then
     echo "ERROR: No containers found for project '${COMPOSE_PROJECT}'"

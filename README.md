@@ -54,13 +54,13 @@ Password: timinou
 
 ## Health Checks
 
-The application includes health checks at multiple levels:
+The application includes built-in health checks at multiple levels:
 
-- **Dockerfile**: Built-in health check that verifies the `/login` endpoint responds
-- **Docker Compose**: Health check configuration for the `ibc` service
-- **CD Pipeline**: Automated health check after deployment to ensure all containers are running
+- **Dockerfile**: Built-in health check (already present) that verifies the `/login` endpoint responds
+- **Docker Compose**: Health check configuration added for the `ibc` service for orchestration visibility
+- **CD Pipeline**: New automated health check script after deployment to ensure all containers are running
 
-The health check script (`scripts/health_check.sh`) verifies:
+The health check script (`scripts/health_check.sh`) added in this PR verifies:
 - All containers in the compose project are running
 - Containers with health checks are in a healthy state
 - Provides detailed logs if health checks fail
