@@ -47,6 +47,7 @@ concurrency:
 
 permissions:
   contents: read
+  security-events: write
 
 jobs:
 
@@ -57,19 +58,27 @@ jobs:
 
     steps:
 
-      - name: Generate SBOM
+      - name: Generate SBOM with Syft
         id: container
-        run: |
-          echo Run Container Scan
-          echo "::warning::Must implement a container scanning mechanism."
-        shell: bash
+        uses: anchore/sbom-action@61119d458adab75f756bc0b9e4bde25725f86a7a # v0.17.2
+        with:
+          image: "ghcr.io/${{ github.repository }}:${{ inputs.image-tag }}"
+          format: 'spdx-json'
+          output-file: 'sbom.spdx.json'
 
-      - name: Scan SBOM
+      - name: Scan SBOM with Grype
         id: sbom
-        run: |
-          echo Run Container Scan
-          echo "::warning::Must implement a container scanning mechanism."
-        shell: bash
+        uses: anchore/scan-action@64a33b277ea7a1215a3c142735a1091341939ff5 # v4.1.2
+        with:
+          sbom: 'sbom.spdx.json'
+          fail-build: false
+          severity-cutoff: 'high'
+
+      - name: Upload Grype scan results
+        uses: github/codeql-action/upload-sarif@4f3212b61783c3c68e8309a0f18a699764811cda # v3.27.1
+        if: always()
+        with:
+          sarif_file: ${{ steps.sbom.outputs.sarif }}
 
       - name: Check status of potentially failing step and issue warning
         if: steps.sbom.outcome == 'failure'

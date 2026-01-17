@@ -136,15 +136,21 @@ jobs:
       - name: Run SAST
         id: sast
         run: |
-          echo Run SAST
-          echo "::warning::Must implement a code scanning mechanism."
+          echo "Running SAST with Bandit..."
+          uv pip install bandit[toml]
+          bandit -r src/ -f json -o bandit-report.json || true
+          bandit -r src/ -f screen
+          echo "SAST scan completed."
         shell: bash
 
       - name: Run SCA
         id: sca
         run: |
-          echo Run SCA
-          echo "::warning::Must implement a dependencies scanning mechanism."
+          echo "Running SCA with pip-audit..."
+          uv pip install pip-audit
+          pip-audit --desc --format json --output sca-report.json || true
+          pip-audit --desc
+          echo "SCA scan completed."
         shell: bash
 
   docker_build:
@@ -173,9 +179,10 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Run Container Scan
+      - name: Run Trivy Container Scan
         id: container
-        run: |
-          echo Run Container Scan
-          echo "::warning::Must implement a container scanning mechanism."
-        shell: bash
+        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8 # 0.24.0
+        with:
+          image-ref: "ghcr.io/${{ github.repository }}:gha-${{ github.run_id }}"
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
