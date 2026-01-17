@@ -18,7 +18,6 @@ RUN apk add --no-cache build-base libffi-dev
 RUN uv venv /app/.venv
 
 RUN uv pip install --no-cache-dir -r requirements.txt
-RUN uv pip install --no-cache-dir httplib2==0.14.0 pycrypto==2.6.1 urllib3==1.24.3
 
 # Runtime stage
 FROM python:3.10.11-alpine3.18 AS runtime
@@ -43,17 +42,17 @@ COPY --from=builder /app/.venv /app/.venv
 
 COPY src /app/src
 COPY manage.py /app/manage.py
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 
-RUN chown -R appuser:appgroup /app
+RUN chmod +x /app/docker-entrypoint.sh && \
+    chown -R appuser:appgroup /app
 
 USER appuser
 
 EXPOSE 8000
 
-RUN python manage.py migrate
-
 HEALTHCHECK --interval=10s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:8000/login || exit 1
 
-ENTRYPOINT ["tini", "--"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

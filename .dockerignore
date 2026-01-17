@@ -49,3 +49,9 @@ scripts/
 tests/
 Thumbs.db
 venv/
+# Additional build artifacts
+*.pyc
+.config/
+data/
+uv.lock
+pyproject.toml
