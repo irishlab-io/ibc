@@ -139,3 +139,9 @@ jobs:
             ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
             "chmod +x ~/scripts/health_check.sh && ~/scripts/health_check.sh compose.yml 'ibc-${{ inputs.env }}'"
         shell: bash
+
+      - name: Cleanup SSH Key
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+        shell: bash

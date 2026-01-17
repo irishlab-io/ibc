@@ -19,7 +19,7 @@ echo ""
 # Function to check if a container is running
 check_container_running() {
     local container_name=$1
-    if docker ps --format '{{.Names}}' | grep -q "^${container_name}$"; then
+    if docker ps --format '{{.Names}}' | grep -qF "${container_name}"; then
         return 0
     else
         return 1
@@ -54,7 +54,7 @@ get_container_status() {
     if [ "${health_status}" = "no-healthcheck" ]; then
         echo "RUNNING (no healthcheck)"
     else
-        echo "${health_status^^}"
+        echo "${health_status}" | tr '[:lower:]' '[:upper:]'
     fi
 }
 
