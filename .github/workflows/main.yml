@@ -80,12 +80,12 @@ jobs:
           GITHUB_PULL_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
-        continue-on-error: true
 
       - name: Check status of potentially failing step and issue warning
         if: steps.secret.outcome == 'failure'
         run: |
           echo "::error::The previous step detected potential secrets in the code. Please review the scan report above."
+          exit 1
         shell: bash
 
   code_build:

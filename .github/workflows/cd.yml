@@ -45,6 +45,9 @@ concurrency:
   group: cd-${{ inputs.env }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
 
   sbom_scan:
@@ -67,12 +70,12 @@ jobs:
           echo Run Container Scan
           echo "::warning::Must implement a container scanning mechanism."
         shell: bash
-        continue-on-error: true
 
       - name: Check status of potentially failing step and issue warning
         if: steps.sbom.outcome == 'failure'
         run: |
           echo "::error::The previous step detected potential vulnerabilities in the associated SBOM. Please review the report above."
+          exit 1
         shell: bash
 
   deploy:
@@ -91,17 +94,12 @@ jobs:
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
 
       - name: Connect to Tailnet
-        uses: tailscale/github-action@v4
+        uses: tailscale/github-action@4e4c49acaa9818630ce0bd7a564372c17e33fb4a # v2
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_CLIENT_SECRET }}
           ping: ${{ secrets.DEPLOY_HOST }}
           tags: tag:ci
-
-      - name: Create .env file
-        run: |
-          echo "CF_TUNNEL_TOKEN=${{ secrets.CF_TUNNEL_TOKEN }}" > .env
-        shell: bash
 
       - name: Update image tag in compose.yml
         if: inputs.env == 'dev'
@@ -110,12 +108,13 @@ jobs:
         shell: bash
 
       - name: Docker Compose Upload and Deploy
-        uses: cssnr/stack-deploy-action@v1.5.0
+        uses: cssnr/stack-deploy-action@1c955fe3e2d56cfd5fde6102374beb16b0c0ce41 # v1.5.0
+        env:
+          CF_TUNNEL_TOKEN: ${{ secrets.CF_TUNNEL_TOKEN }}
         with:
           name: "ibc-${{ inputs.env }}"
           file: "compose.yml"
           host: ${{ secrets.DEPLOY_HOST }}
           user: ${{ secrets.DEPLOY_USER }}
           ssh_key: ${{ secrets.DEPLOY_SSH_KEY }}
-          env_file: ".env"
           mode: compose

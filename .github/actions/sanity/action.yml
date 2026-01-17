@@ -25,14 +25,14 @@ runs:
     - name: Get changed files
       if: ${{ inputs.detect-changes == 'true' }}
       id: changed-files
-      uses: tj-actions/changed-files@v45
+      uses: tj-actions/changed-files@c3a1bb2c992d77180ae65be6ae6c166cf40f857c # v45.0.3
       with:
         token: ${{ inputs.token }}
 
     - name: Setup reviewdog action
       if: ${{ inputs.detect-changes == 'true' }}
       id: reviewdog-setup
-      uses: reviewdog/action-setup@v1
+      uses: reviewdog/action-setup@3f401fe1d58fe77e10d665ab713057375e39b887 # v1.3.0
 
     - name: Run reviewdog action
       if: ${{ inputs.detect-changes == 'true' }}

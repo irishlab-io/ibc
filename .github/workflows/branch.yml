@@ -17,11 +17,16 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
 
-  hello:
-    name: Call Hello World Reusable Workflow
-    uses: mighty-muffin/.github/.github/workflows/reusable-hello-world.yml@main
+  # TODO: Pin external workflow to specific commit SHA instead of 'main' branch
+  # hello:
+  #   name: Call Hello World Reusable Workflow
+  #   uses: mighty-muffin/.github/.github/workflows/reusable-hello-world.yml@main
 
   sdlc_scan:
     name: SDLC Scan
@@ -50,7 +55,6 @@ jobs:
         uses: ./.github/actions/precommit
         with:
           skip: "pytest, uv-export"
-        continue-on-error: true
 
   code_build:
     needs:
@@ -92,7 +96,6 @@ jobs:
           uv pip install pytest pytest-cov pytest-django pytest-mock pytest-xdist
           uv run pytest -m "not e2e"
         shell: bash
-        continue-on-error: true
 
   code_scan:
     needs:
