@@ -29,9 +29,39 @@
 
 2. Open the application here: <http://localhost:8000>
 
+## Running with Docker Compose
+
+1. Start the application stack:
+
+   ```bash
+   docker compose up -d
+   ```
+
+2. Verify all containers are healthy:
+
+   ```bash
+   ./scripts/health_check.sh compose.yml ibc
+   ```
+
+3. Access the application at <http://localhost:8000>
+
 ## Login credentials
 
 ```text
 Username: guillaume
 Password: timinou
 ```
+
+## Health Checks
+
+The application includes health checks at multiple levels:
+
+- **Dockerfile**: Built-in health check that verifies the `/login` endpoint responds
+- **Docker Compose**: Health check configuration for the `ibc` service
+- **CD Pipeline**: Automated health check after deployment to ensure all containers are running
+
+The health check script (`scripts/health_check.sh`) verifies:
+- All containers in the compose project are running
+- Containers with health checks are in a healthy state
+- Provides detailed logs if health checks fail
+

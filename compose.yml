@@ -10,6 +10,12 @@ services:
       - 8000:8000
     networks:
       - cloudflared
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/login"]
+      interval: 10s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
 
   cloudflare-tunnel:
     image: docker.io/cloudflare/cloudflared:latest
