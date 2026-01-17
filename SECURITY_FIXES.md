@@ -60,7 +60,7 @@ return Account.objects.raw(sql, [username])
 **Location Fixed**: `to_traces()` function (line 60)
 
 **Fix Applied**:
-Replaced `os.system()` with `subprocess.run()` using a command list (not shell mode):
+Replaced `os.system()` with `subprocess.run()` using proper argument parsing:
 
 ```python
 # BEFORE (vulnerable):
@@ -68,22 +68,33 @@ def to_traces(string: str) -> str:
     return str(os.system(string))
 
 # AFTER (secure):
+import shlex
+
 def to_traces(string: str) -> str:
-    """Execute command safely using subprocess instead of os.system to prevent command injection."""
+    """Execute command safely using subprocess instead of os.system.
+    
+    Uses shlex.split() for proper shell argument parsing while maintaining security.
+    """
     try:
+        # Use shlex.split() for proper command parsing without shell injection
+        args = shlex.split(string)
         result = subprocess.run(
-            string.split(),
+            args,
             capture_output=True,
             text=True,
             check=False,
             timeout=5
         )
         return f"Return code: {result.returncode}"
-    except (subprocess.TimeoutExpired, Exception) as e:
+    except (subprocess.TimeoutExpired, ValueError, Exception) as e:
         return f"Error: {str(e)}"
 ```
 
-**Impact**: Prevents command injection by avoiding shell interpretation. Commands are split into arguments and executed directly.
+**Impact**: Prevents command injection by:
+- Avoiding shell interpretation completely
+- Using `shlex.split()` for proper argument parsing
+- Adding timeout protection
+- Handling quoted arguments correctly
 
 ---
 
@@ -96,14 +107,17 @@ def to_traces(string: str) -> str:
 - Attackers could achieve remote code execution by uploading malicious pickled objects
 
 **Locations Fixed**:
-1. `MaliciousCertificateDownloadView.post()` (line 205)
-2. `NewCertificateView.post()` (line 228)
+1. `CertificateDownloadView.post()` (line 203) - was using pickle.dumps
+2. `MaliciousCertificateDownloadView.post()` (line 205)
+3. `NewCertificateView.post()` (line 228)
 
 **Fix Applied**:
 Replaced pickle serialization with JSON:
 
 ```python
 # BEFORE (vulnerable):
+certificate = pickle.dumps(Trusted("this is safe"))
+# or
 certificate = pickle.dumps(Untrusted("this is not safe"))
 # ...
 pickle.loads(data)

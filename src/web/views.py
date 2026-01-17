@@ -2,6 +2,8 @@ import base64
 import json
 import logging
 import os
+import secrets
+import shlex
 import subprocess
 from datetime import date
 from typing import Any
@@ -29,8 +31,9 @@ from web.services import (
 
 logger = logging.getLogger(__name__)
 storage_service = StorageService()
-# Use a proper 128-bit key for AES (16 bytes)
-secretKey = bytes("0123456789abcdef", "UTF-8")
+# Note: In production, this should be loaded from environment variables or a secrets manager
+# For this educational app, we use a fixed key for demonstration purposes
+secretKey = os.environ.get("ENCRYPTION_KEY", "0123456789abcdef").encode("UTF-8")[:16]
 checksum = [""]
 resources = os.path.join(settings.BASE_DIR, "src", "web", "static", "resources")
 
@@ -43,9 +46,12 @@ class Trusted:
 
 
 def get_file_checksum(data: bytes) -> str:
-    """Generate a secure checksum using AES encryption instead of deprecated DES."""
-    # Use AES-128 in CBC mode with a proper IV
-    iv = secretKey  # In production, use a random IV
+    """Generate a secure checksum using AES encryption instead of deprecated DES.
+    
+    Note: Uses a random IV for each encryption to ensure semantic security.
+    """
+    # Generate a random IV for each encryption operation
+    iv = secrets.token_bytes(16)  # 128-bit random IV
     cipher = Cipher(algorithms.AES(secretKey), modes.CBC(iv), backend=default_backend())
     encryptor = cipher.encryptor()
     
@@ -54,22 +60,27 @@ def get_file_checksum(data: bytes) -> str:
     padded_data = padder.update(data) + padder.finalize()
     
     encrypted = encryptor.update(padded_data) + encryptor.finalize()
-    return base64.b64encode(encrypted).decode("UTF-8")
+    # Prepend IV to encrypted data for decryption
+    return base64.b64encode(iv + encrypted).decode("UTF-8")
 
 
 def to_traces(string: str) -> str:
-    """Execute command safely using subprocess instead of os.system to prevent command injection."""
+    """Execute command safely using subprocess instead of os.system to prevent command injection.
+    
+    Uses shlex.split() for proper shell argument parsing while maintaining security.
+    """
     try:
-        # Use subprocess with shell=False to prevent command injection
+        # Use shlex.split() for proper command parsing without shell injection
+        args = shlex.split(string)
         result = subprocess.run(
-            string.split(),
+            args,
             capture_output=True,
             text=True,
             check=False,
             timeout=5
         )
         return f"Return code: {result.returncode}"
-    except (subprocess.TimeoutExpired, Exception) as e:
+    except (subprocess.TimeoutExpired, ValueError, Exception) as e:
         return f"Error: {str(e)}"
 
 
@@ -200,13 +211,21 @@ class CertificateDownloadView(View):
     http_method_names = ["post"]
 
     def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        certificate = pickle.dumps(Trusted("this is safe"))
+        # Use JSON instead of pickle for safe serialization
         principal = self.request.user
         account = AccountService.find_users_by_username(principal.username)[0]
-        file_name = f"attachment;Certificate_={account.name}"
+        
+        certificate_data = {
+            "username": account.username,
+            "name": account.name,
+            "type": "trusted_certificate"
+        }
+        certificate = json.dumps(certificate_data).encode('utf-8')
+        
+        file_name = f"attachment;Certificate_{account.name}.json"
         return HttpResponse(
             certificate,
-            content_type="application/octet-stream",
+            content_type="application/json",
             headers={"Content-Disposition": file_name},
         )
 
