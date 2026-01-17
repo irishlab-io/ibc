@@ -72,7 +72,8 @@ jobs:
       - name: Check status of potentially failing step and issue warning
         if: steps.sbom.outcome == 'failure'
         run: |
-          echo "::error::The previous step detected potential vulnerabilities in the associated SBOM. Please review the report above."
+          echo "::error::The previous step detected potential vulnerabilities"
+          echo "in the associated SBOM. Please review the report above."
         shell: bash
 
   deploy:
@@ -106,7 +107,9 @@ jobs:
       - name: Update image tag in compose.yml
         if: inputs.env == 'dev'
         run: |
-          sed -i 's|ghcr.io/mighty-muffin/ibc:latest|ghcr.io/mighty-muffin/ibc:gha-${{ github.run_id }}|g' compose.yml
+          sed -i \
+            's|ghcr.io/mighty-muffin/ibc:latest|ghcr.io/mighty-muffin/ibc:gha-${{ github.run_id }}|g' \
+            compose.yml
         shell: bash
 
       - name: Docker Compose Upload and Deploy
@@ -119,3 +122,96 @@ jobs:
           ssh_key: ${{ secrets.DEPLOY_SSH_KEY }}
           env_file: ".env"
           mode: compose
+
+  load_testing:
+    if: inputs.env == 'dev'
+    needs:
+      - deploy
+    name: Load Testing - Dev
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Setup k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] \
+            https://dl.k6.io/deb stable main" | \
+            sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+        shell: bash
+
+      - name: Wait for deployment to stabilize
+        run: |
+          echo "Waiting 30 seconds for deployment to stabilize..."
+          sleep 30
+        shell: bash
+
+      - name: Run Workload Stability Test
+        id: workload
+        run: |
+          echo "::notice::Running Workload Stability Test (5 minutes)"
+          k6 run -e BASE_URL=${{ vars.ENVIRONMENT_URL }} \
+            tests/load/workload-stability.js
+        shell: bash
+        continue-on-error: true
+
+      - name: Run Peak Load Test
+        id: peak
+        run: |
+          echo "::notice::Running Peak Load Test (5 minutes)"
+          k6 run -e BASE_URL=${{ vars.ENVIRONMENT_URL }} \
+            tests/load/peak-load.js
+        shell: bash
+        continue-on-error: true
+
+      - name: Run Soak Test
+        id: soak
+        run: |
+          echo "::notice::Running Soak Test (10 minutes)"
+          k6 run -e BASE_URL=${{ vars.ENVIRONMENT_URL }} \
+            tests/load/soak-test.js
+        shell: bash
+        continue-on-error: true
+
+      - name: Evaluate Load Test Results
+        if: always()
+        run: |
+          echo "=== Load Test Results Summary ==="
+          echo ""
+          if [ "${{ steps.workload.outcome }}" == "success" ]; then
+            echo "✅ Workload Stability Test: PASSED"
+          else
+            echo "⚠️  Workload Stability Test: FAILED"
+          fi
+
+          if [ "${{ steps.peak.outcome }}" == "success" ]; then
+            echo "✅ Peak Load Test: PASSED"
+          else
+            echo "⚠️  Peak Load Test: FAILED"
+          fi
+
+          if [ "${{ steps.soak.outcome }}" == "success" ]; then
+            echo "✅ Soak Test: PASSED"
+          else
+            echo "⚠️  Soak Test: FAILED"
+          fi
+
+          echo ""
+          if [ "${{ steps.workload.outcome }}" != "success" ] || \
+             [ "${{ steps.peak.outcome }}" != "success" ] || \
+             [ "${{ steps.soak.outcome }}" != "success" ]; then
+            echo "::warning::One or more load tests failed."
+            echo "Review the test output above for details."
+          else
+            echo "::notice::All load tests passed successfully!"
+          fi
+        shell: bash
