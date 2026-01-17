@@ -17,8 +17,8 @@ RUN apk add --no-cache build-base libffi-dev
 
 RUN uv venv /app/.venv
 
+# Install only the secure dependencies from requirements.txt
 RUN uv pip install --no-cache-dir -r requirements.txt
-RUN uv pip install --no-cache-dir httplib2==0.14.0 pycrypto==2.6.1 urllib3==1.24.3
 
 # Runtime stage
 FROM python:3.10.11-alpine3.18 AS runtime

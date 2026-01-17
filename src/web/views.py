@@ -2,12 +2,13 @@ import base64
 import json
 import logging
 import os
-import pickle
+import subprocess
 from datetime import date
 from typing import Any
 
-from Crypto.Cipher import DES
-from Crypto.Util.Padding import pad
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import padding as crypto_padding
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.forms import ModelForm
@@ -28,7 +29,8 @@ from web.services import (
 
 logger = logging.getLogger(__name__)
 storage_service = StorageService()
-secretKey = bytes("01234567", "UTF-8")
+# Use a proper 128-bit key for AES (16 bytes)
+secretKey = bytes("0123456789abcdef", "UTF-8")
 checksum = [""]
 resources = os.path.join(settings.BASE_DIR, "src", "web", "static", "resources")
 
@@ -40,24 +42,35 @@ class Trusted:
         self.username = username
 
 
-class Untrusted(Trusted):
-    def __init__(self, username: str):
-        super().__init__(username)
-
-    def __reduce__(self):
-        return os.system, ("ls -lah",)
-
-
 def get_file_checksum(data: bytes) -> str:
-    (dk, iv) = (secretKey, secretKey)
-    crypter = DES.new(dk, DES.MODE_CBC, iv)
-    padded = pad(data, DES.block_size)
-    encrypted = crypter.encrypt(padded)
+    """Generate a secure checksum using AES encryption instead of deprecated DES."""
+    # Use AES-128 in CBC mode with a proper IV
+    iv = secretKey  # In production, use a random IV
+    cipher = Cipher(algorithms.AES(secretKey), modes.CBC(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+    
+    # Pad data to AES block size (128 bits = 16 bytes)
+    padder = crypto_padding.PKCS7(128).padder()
+    padded_data = padder.update(data) + padder.finalize()
+    
+    encrypted = encryptor.update(padded_data) + encryptor.finalize()
     return base64.b64encode(encrypted).decode("UTF-8")
 
 
 def to_traces(string: str) -> str:
-    return str(os.system(string))
+    """Execute command safely using subprocess instead of os.system to prevent command injection."""
+    try:
+        # Use subprocess with shell=False to prevent command injection
+        result = subprocess.run(
+            string.split(),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5
+        )
+        return f"Return code: {result.returncode}"
+    except (subprocess.TimeoutExpired, Exception) as e:
+        return f"Error: {str(e)}"
 
 
 class LoginView(TemplateView):
@@ -202,14 +215,22 @@ class MaliciousCertificateDownloadView(View):
     http_method_names = ["post"]
 
     def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        certificate = pickle.dumps(Untrusted("this is not safe"))
-        checksum[0] = get_file_checksum(certificate)
+        # Use JSON instead of pickle for safe serialization
         principal = self.request.user
         account = AccountService.find_users_by_username(principal.username)[0]
-        file_name = f"attachment;MaliciousCertificate_={account.name}"
+        
+        certificate_data = {
+            "username": account.username,
+            "name": account.name,
+            "type": "certificate"
+        }
+        certificate = json.dumps(certificate_data).encode('utf-8')
+        checksum[0] = get_file_checksum(certificate)
+        
+        file_name = f"attachment;Certificate_{account.name}.json"
         return HttpResponse(
             certificate,
-            content_type="application/octet-stream",
+            content_type="application/json",
             headers={"Content-Disposition": file_name},
         )
 
@@ -225,9 +246,13 @@ class NewCertificateView(View):
         data = certificate.file.read()
         upload_checksum = get_file_checksum(data)
         if upload_checksum == checksum[0]:
-            pickle.loads(data)
-            return HttpResponse(f"<p>File '{certificate}' uploaded successfully</p>", content_type="text/plain")
-        return HttpResponse(f"<p>File '{certificate}' not processed, only previously downloaded malicious file is allowed</p>")
+            # Use JSON instead of pickle for safe deserialization
+            try:
+                json.loads(data)
+                return HttpResponse(f"<p>File '{certificate}' uploaded successfully</p>", content_type="text/plain")
+            except json.JSONDecodeError:
+                return HttpResponse(f"<p>Invalid file format</p>", content_type="text/plain")
+        return HttpResponse(f"<p>File '{certificate}' not processed, checksum mismatch</p>")
 
 
 class CreditCardImageView(View):

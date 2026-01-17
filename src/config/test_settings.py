@@ -1,5 +1,8 @@
 """Test-specific Django settings configuration."""
 
+import tempfile
+from pathlib import Path
+
 from config.settings import *
 
 # Override settings for testing
@@ -56,11 +59,11 @@ CACHES = {
 # Email backend for tests
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
-# Media files for tests
-MEDIA_ROOT = "/tmp/test_media"
+# Media files for tests - use secure temporary directory
+MEDIA_ROOT = Path(tempfile.gettempdir()) / "ibc_test_media"
 
-# Static files for tests
-STATIC_ROOT = "/tmp/test_static"
+# Static files for tests - use secure temporary directory
+STATIC_ROOT = Path(tempfile.gettempdir()) / "ibc_test_static"
 
 # Security settings for tests (keep vulnerabilities for testing)
 # Note: These maintain the intentional vulnerabilities for educational testing

@@ -58,13 +58,13 @@ class AccountService(BaseBackend):
 
     @staticmethod
     def find_users_by_username_and_password(username: str, password: str) -> list[Account]:
-        sql = "select * from web_account where username='" + username + "' AND password='" + password + "'"
-        return Account.objects.raw(sql)
+        sql = "select * from web_account where username=%s AND password=%s"
+        return Account.objects.raw(sql, [username, password])
 
     @staticmethod
     def find_users_by_username(username: str) -> list[Account]:
-        sql = "select * from web_account where username='" + username + "'"
-        return Account.objects.raw(sql)
+        sql = "select * from web_account where username=%s"
+        return Account.objects.raw(sql, [username])
 
     @staticmethod
     def find_all_users() -> list[Account]:
@@ -75,22 +75,22 @@ class AccountService(BaseBackend):
 class CashAccountService:
     @staticmethod
     def find_cash_accounts_by_username(username: str) -> list[CashAccount]:
-        sql = "select * from web_cashaccount  where username='" + username + "'"
-        return CashAccount.objects.raw(sql)
+        sql = "select * from web_cashaccount  where username=%s"
+        return CashAccount.objects.raw(sql, [username])
 
     @staticmethod
     def get_from_account_actual_amount(account: str) -> float:
-        sql = "SELECT availableBalance FROM web_cashaccount WHERE number = '" + account + "'"
+        sql = "SELECT availableBalance FROM web_cashaccount WHERE number = %s"
         with connection.cursor() as cursor:
-            cursor.execute(sql)
+            cursor.execute(sql, [account])
             row = cursor.fetchone()
             return row[0]
 
     @staticmethod
     def get_id_from_number(account: str) -> int:
-        sql = "SELECT id FROM web_cashaccount WHERE number = '" + account + "'"
+        sql = "SELECT id FROM web_cashaccount WHERE number = %s"
         with connection.cursor() as cursor:
-            cursor.execute(sql)
+            cursor.execute(sql, [account])
             row = cursor.fetchone()
             return row[0]
 
@@ -98,27 +98,21 @@ class CashAccountService:
 class CreditAccountService:
     @staticmethod
     def find_credit_accounts_by_username(username: str) -> list[CreditAccount]:
-        sql = "select * from web_creditaccount  where username='" + username + "'"
-        return CreditAccount.objects.raw(sql)
+        sql = "select * from web_creditaccount  where username=%s"
+        return CreditAccount.objects.raw(sql, [username])
 
     @staticmethod
     def update_credit_account(cashAccountId: int, round: float):
-        sql = (
-            "UPDATE web_creditaccount SET availableBalance='"
-            + str(round)
-            + "' WHERE cashAccountId ='"
-            + str(cashAccountId)
-            + "'"
-        )
+        sql = "UPDATE web_creditaccount SET availableBalance=%s WHERE cashAccountId=%s"
         with connection.cursor() as cursor:
-            cursor.execute(sql)
+            cursor.execute(sql, [round, cashAccountId])
 
 
 class ActivityService:
     @staticmethod
     def find_transactions_by_cash_account_number(number: str) -> list[Transaction]:
-        sql = "SELECT * FROM web_transaction WHERE number = '" + number + "'"
-        return Transaction.objects.raw(sql)
+        sql = "SELECT * FROM web_transaction WHERE number = %s"
+        return Transaction.objects.raw(sql, [number])
 
     @staticmethod
     def insert_new_activity(date, description: str, number: str, amount: float, avaiable_balance: float):
