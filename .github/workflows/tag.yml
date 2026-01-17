@@ -48,6 +48,18 @@ jobs:
         run: |
           echo "${{join(fromJson(steps.generate_notes.outputs.notes).notes, '')}}" > ${{ github.workspace }}-GH_CHANGELOG.md
 
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+        shell: bash
+
+      - name: Generate SBOM
+        run: |
+          VERSION="${{ steps.tag_name.outputs.current_version }}"
+          syft dir:. -o spdx-json=sbom-v${VERSION}.spdx.json
+          syft dir:. -o cyclonedx-json=sbom-v${VERSION}.cyclonedx.json
+        shell: bash
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         if: github.ref_type == 'tag'
@@ -55,3 +67,6 @@ jobs:
           body_path: ${{ github.workspace }}-GH_CHANGELOG.md
           repository: ${{ github.repository }}
           token: ${{ secrets.RELEASE_PAT }}
+          files: |
+            sbom-v${{ steps.tag_name.outputs.current_version }}.spdx.json
+            sbom-v${{ steps.tag_name.outputs.current_version }}.cyclonedx.json

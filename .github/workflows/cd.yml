@@ -54,25 +54,96 @@ jobs:
 
     steps:
 
-      - name: Generate SBOM
-        id: container
+      - name: Install Grype
         run: |
-          echo Run Container Scan
-          echo "::warning::Must implement a container scanning mechanism."
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
         shell: bash
 
-      - name: Scan SBOM
+      - name: Download SBOM from Release
+        id: download_sbom
+        run: |
+          # Get the version tag from image-tag input (e.g., v0.2.0)
+          IMAGE_TAG="${{ inputs.image-tag }}"
+          
+          # Try to determine version from image tag
+          if [[ "$IMAGE_TAG" =~ ^v?([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            echo "Detected version: v${VERSION}"
+          else
+            echo "::warning::Cannot determine version from image-tag '$IMAGE_TAG', will try to get latest release"
+            # Get the latest release tag
+            VERSION=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+            if [ -z "$VERSION" ]; then
+              echo "::error::Could not determine version from image-tag or latest release"
+              exit 1
+            fi
+          fi
+          
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          
+          # Download SBOM file from release
+          SBOM_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/sbom-v${VERSION}.spdx.json"
+          echo "Downloading SBOM from: $SBOM_URL"
+          
+          if curl -f -L -o sbom.spdx.json "$SBOM_URL"; then
+            echo "Successfully downloaded SBOM"
+            ls -lh sbom.spdx.json
+          else
+            echo "::error::Failed to download SBOM from $SBOM_URL"
+            echo "::warning::This may be expected if this is the first deployment or SBOM was not generated yet."
+            exit 1
+          fi
+        shell: bash
+        continue-on-error: false
+
+      - name: Scan SBOM for Vulnerabilities
         id: sbom
         run: |
-          echo Run Container Scan
-          echo "::warning::Must implement a container scanning mechanism."
+          echo "Scanning SBOM for vulnerabilities..."
+          
+          # Run grype on the SBOM file
+          # Using fail-on=high to fail on high and critical vulnerabilities
+          grype sbom:sbom.spdx.json -o table --fail-on high
+          
+          SCAN_EXIT_CODE=$?
+          
+          if [ $SCAN_EXIT_CODE -ne 0 ]; then
+            echo "::warning::Vulnerabilities detected in SBOM"
+            exit 1
+          else
+            echo "No high or critical vulnerabilities found"
+          fi
         shell: bash
         continue-on-error: true
+
+      - name: Generate Vulnerability Report
+        if: always() && steps.download_sbom.outcome == 'success'
+        run: |
+          echo "Generating detailed vulnerability report..."
+          grype sbom:sbom.spdx.json -o json > vulnerability-report.json
+          grype sbom:sbom.spdx.json -o table > vulnerability-report.txt
+          
+          echo "=== Vulnerability Summary ==="
+          cat vulnerability-report.txt
+        shell: bash
+        continue-on-error: true
+
+      - name: Upload Vulnerability Report
+        if: always() && steps.download_sbom.outcome == 'success'
+        uses: actions/upload-artifact@ea054db2c1ae17326690e2235a43c0047d6e397e # v4.6.0
+        with:
+          name: vulnerability-report-${{ inputs.env }}
+          path: |
+            vulnerability-report.json
+            vulnerability-report.txt
+            sbom.spdx.json
+          retention-days: 30
 
       - name: Check status of potentially failing step and issue warning
         if: steps.sbom.outcome == 'failure'
         run: |
           echo "::error::The previous step detected potential vulnerabilities in the associated SBOM. Please review the report above."
+          echo "::error::High or critical vulnerabilities were found in the SBOM. Review the vulnerability report artifact for details."
         shell: bash
 
   deploy:
