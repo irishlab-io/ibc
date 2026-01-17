@@ -47,6 +47,10 @@ At a high level, once a git commit is pushed to the remote repository the variou
 - **Security Phase:** Run the SDLC, Secret, SAST, SCA and Container scanning
 - **Gating Phase:** Check if any failure occurs during the Security Phase
 - **Release Phase:** Trigger the package release once code is merged to `main`
+- **SBOM Generation:** Generate Software Bill of Materials for releases
+- **Vulnerability Scanning:** Scan SBOM for known vulnerabilities before deployment
+
+For detailed information about SBOM generation and vulnerability scanning, see [SBOM Documentation](sbom.md).
 
 ## Reusable Workflows and Composite Actions
 

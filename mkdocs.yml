@@ -42,6 +42,7 @@ nav:
       - Overview: pipeline/overview.md
       - Branches: pipeline/branches.md
       - Dependabot: pipeline/dependabot.md
+      - SBOM: pipeline/sbom.md
   - Security:
       - Overview: security/overview.md
       - Scenario 1: security/scenario-1.md
