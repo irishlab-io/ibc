@@ -2,6 +2,8 @@
 # Health check script for verifying deployed containers are up and running
 
 set -e
+set -u  # Catch undefined variables
+set -o pipefail  # Catch errors in pipes
 
 # Configuration
 COMPOSE_FILE="${1:-compose.yml}"
@@ -58,9 +60,9 @@ get_container_status() {
 
 # Get list of containers from compose project
 echo "Retrieving container list from project: ${COMPOSE_PROJECT}"
-containers=$(docker ps --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" --format '{{.Names}}' 2>/dev/null || echo "")
+containers_raw="$(docker ps --filter "label=com.docker.compose.project=${COMPOSE_PROJECT}" --format '{{.Names}}' 2>/dev/null || echo '')"
 
-if [ -z "${containers}" ]; then
+if [ -z "${containers_raw}" ]; then
     echo "ERROR: No containers found for project '${COMPOSE_PROJECT}'"
     echo "Checking for containers without project filter..."
     echo ""
@@ -68,8 +70,11 @@ if [ -z "${containers}" ]; then
     exit 1
 fi
 
+# Convert to array for safe iteration
+readarray -t containers <<< "${containers_raw}"
+
 echo "Found containers:"
-for container in ${containers}; do
+for container in "${containers[@]}"; do
     echo "  - ${container}"
 done
 echo ""
@@ -82,7 +87,7 @@ while [ ${elapsed} -lt ${MAX_WAIT_TIME} ]; do
     all_healthy=true
     
     echo "Check at ${elapsed}s:"
-    for container in ${containers}; do
+    for container in "${containers[@]}"; do
         status=$(get_container_status "${container}")
         echo "  ${container}: ${status}"
         
@@ -115,7 +120,7 @@ done
 echo "✗ Health check FAILED: Timeout reached after ${MAX_WAIT_TIME}s"
 echo ""
 echo "Final container status:"
-for container in ${containers}; do
+for container in "${containers[@]}"; do
     status=$(get_container_status "${container}")
     echo "  ${container}: ${status}"
     
