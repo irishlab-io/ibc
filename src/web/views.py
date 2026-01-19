@@ -2,12 +2,14 @@ import base64
 import json
 import logging
 import os
-import pickle
+import logging
+import json
 from datetime import date
 from typing import Any
 
-from Crypto.Cipher import DES
-from Crypto.Util.Padding import pad
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.forms import ModelForm
@@ -28,7 +30,16 @@ from web.services import (
 
 logger = logging.getLogger(__name__)
 storage_service = StorageService()
-secretKey = bytes("01234567", "UTF-8")
+logger = logging.getLogger(__name__)
+
+# Load encryption key from environment variable or Django settings
+# Key must be 32 bytes for AES-256
+ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY')
+if ENCRYPTION_KEY:
+    ENCRYPTION_KEY = ENCRYPTION_KEY.encode()[:32].ljust(32, b'\0')
+else:
+    from django.conf import settings
+    ENCRYPTION_KEY = settings.SECRET_KEY.encode()[:32].ljust(32, b'\0')
 checksum = [""]
 resources = os.path.join(settings.BASE_DIR, "src", "web", "static", "resources")
 
@@ -49,11 +60,50 @@ class Untrusted(Trusted):
 
 
 def get_file_checksum(data: bytes) -> str:
-    (dk, iv) = (secretKey, secretKey)
-    crypter = DES.new(dk, DES.MODE_CBC, iv)
-    padded = pad(data, DES.block_size)
-    encrypted = crypter.encrypt(padded)
-    return base64.b64encode(encrypted).decode("UTF-8")
+    """
+    Generate a secure checksum using AES-256-GCM authenticated encryption.
+
+    This function uses AES-256 in GCM (Galois/Counter Mode) which provides both
+    confidentiality and authenticity. It generates a random nonce for each
+    encryption operation to ensure semantic security.
+
+    Args:
+        data: Bytes to encrypt
+
+    Returns:
+        Base64-encoded string containing nonce + ciphertext + tag
+
+    Raises:
+        ValueError: If encryption fails or input is invalid
+
+    Security Notes:
+        - Uses AES-256 (NIST-approved algorithm)
+        - GCM mode provides authenticated encryption (AEAD)
+        - Random nonce generated for each operation
+        - Key loaded from environment, not hardcoded
+    """
+    try:
+        if not data:
+            raise ValueError("Data cannot be empty")
+
+        key = ENCRYPTION_KEY
+        # Generate a random 16-byte nonce (recommended size for AES-GCM)
+        nonce = get_random_bytes(16)
+        
+        # Create AES cipher in GCM mode
+        cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
+        
+        # Encrypt and generate authentication tag
+        ciphertext, tag = cipher.encrypt_and_digest(data)
+
+        # Combine nonce, ciphertext, and authentication tag
+        # Format: [nonce (16 bytes)] + [ciphertext] + [tag (16 bytes)]
+        encrypted = nonce + ciphertext + tag
+        
+        return base64.b64encode(encrypted).decode("UTF-8")
+    except Exception as e:
+        logger.error(f"Encryption error: {str(e)}", exc_info=True)
+        raise ValueError("Failed to encrypt data") from e
 
 
 def to_traces(string: str) -> str:
@@ -225,7 +275,14 @@ class NewCertificateView(View):
         data = certificate.file.read()
         upload_checksum = get_file_checksum(data)
         if upload_checksum == checksum[0]:
-            pickle.loads(data)
+            try:
+                # Use JSON for safe deserialization instead of pickle
+                # Pickle is unsafe for untrusted data and can lead to RCE
+                data_dict = json.loads(data.decode('utf-8'))
+                # Process data_dict safely
+            except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                logger.error(f"Invalid file format: {str(e)}")
+                return HttpResponse("Invalid file format", status=400)
             return HttpResponse(f"<p>File '{certificate}' uploaded successfully</p>", content_type="text/plain")
         return HttpResponse(f"<p>File '{certificate}' not processed, only previously downloaded malicious file is allowed</p>")
 
