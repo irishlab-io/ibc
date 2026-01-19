@@ -8,6 +8,24 @@ import django
 import pytest
 
 # Pytest configuration
+
+# SECURITY NOTE: PyYAML Security Testing
+# Add test_yaml_security.py with these tests to verify CVE-2020-14343 remediation:
+#
+# def test_unsafe_yaml_payload_rejected():
+#     """Verify dangerous YAML payloads are blocked"""
+#     import yaml
+#     dangerous = '!!python/object/apply:os.system ["echo exploit"]'
+#     with pytest.raises(yaml.constructor.ConstructorError):
+#         yaml.safe_load(dangerous)
+#
+# def test_safe_yaml_loading():
+#     """Verify safe YAML still works"""
+#     import yaml
+#     safe = 'name: test\nvalue: 123'
+#     data = yaml.safe_load(safe)
+#     assert data['name'] == 'test'
+
 from django.conf import settings
 from django.test.utils import get_runner
 

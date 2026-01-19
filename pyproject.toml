@@ -8,7 +8,8 @@ dependencies = [
     "asgiref==3.7.2",
     "django==4.2.4,<5.0.0",
     "pycryptodome==3.18.0",
-    "pyyaml>=6.0.1",
+    "pyyaml>=6.0.1
+django>=4.2",
     "sqlparse==0.4.2",
     "typing-extensions==4.7.1",
 ]
