@@ -1029,29 +1029,26 @@ class TestTransferFormAndHelperFunctions(ViewTestMixin, TestCase):
             Trusted.from_dict(data)
         self.assertIn('username', str(context.exception))
 
-    @patch('web.views.AES')
-    @patch('web.views.get_random_bytes')
+    @patch('web.views.AESGCM')
+    @patch('web.views.secrets.token_bytes')
     @patch('web.views.base64.b64encode')
-    def test_get_file_checksum_uses_aes_gcm(self, mock_b64encode, mock_random, mock_aes):
+    def test_get_file_checksum_uses_aes_gcm(self, mock_b64encode, mock_token_bytes, mock_aesgcm):
         """Test get_file_checksum function uses AES-256-GCM encryption."""
-        # Mock AES encryption
+        # Mock AESGCM encryption
         mock_cipher = Mock()
-        mock_cipher.encrypt_and_digest.return_value = (b'ciphertext', b'tag')
-        mock_aes.new.return_value = mock_cipher
-        mock_aes.MODE_GCM = 6  # GCM mode constant
-        mock_random.return_value = b'random_nonce_16b'
+        mock_cipher.encrypt.return_value = b'ciphertext_with_tag'
+        mock_aesgcm.return_value = mock_cipher
+        mock_token_bytes.return_value = b'random_12_by'  # 12 bytes for GCM nonce
         mock_b64encode.return_value = b'base64_encoded'
 
         result = get_file_checksum(b'test_data')
 
         self.assertEqual(result, 'base64_encoded')
-        # Verify AES-GCM was used
-        mock_aes.new.assert_called_once()
-        call_kwargs = mock_aes.new.call_args[1]
-        self.assertEqual(call_kwargs['nonce'], b'random_nonce_16b')
-        mock_cipher.encrypt_and_digest.assert_called_once_with(b'test_data')
-        # Verify nonce + ciphertext + tag are combined
-        mock_b64encode.assert_called_once_with(b'random_nonce_16b' + b'ciphertext' + b'tag')
+        # Verify AESGCM was used
+        mock_aesgcm.assert_called_once()
+        mock_cipher.encrypt.assert_called_once_with(b'random_12_by', b'test_data', None)
+        # Verify nonce + ciphertext are combined
+        mock_b64encode.assert_called_once_with(b'random_12_by' + b'ciphertext_with_tag')
 
     def test_get_file_checksum_produces_different_output(self):
         """Test get_file_checksum produces different output for same input (random nonce)."""
@@ -1064,7 +1061,7 @@ class TestTransferFormAndHelperFunctions(ViewTestMixin, TestCase):
 
     def test_get_file_checksum_error_handling(self):
         """Test get_file_checksum raises ValueError on encryption failure."""
-        with patch('web.views.AES.new', side_effect=Exception("Encryption failed")):
+        with patch('web.views.AESGCM', side_effect=Exception("Encryption failed")):
             with self.assertRaises(ValueError) as context:
                 get_file_checksum(b'test_data')
             self.assertIn('Failed to encrypt data', str(context.exception))

@@ -56,8 +56,8 @@ class TestSecureCryptographicImplementation(TestCase):
                 # Decode and verify structure (nonce + ciphertext + tag)
                 decoded = base64.b64decode(result)
 
-                # Should be at least 32 bytes (16 nonce + 16 tag minimum)
-                self.assertGreaterEqual(len(decoded), 32)
+                # Should be at least 28 bytes (12 nonce + 16 tag minimum for empty data)
+                self.assertGreaterEqual(len(decoded), 28)
 
                 # Log secure implementation details
                 print(f"DATA LENGTH: {len(test_data)} bytes")
@@ -161,19 +161,18 @@ class TestSecureCryptographicImplementation(TestCase):
         result = get_file_checksum(test_data)
         decoded = base64.b64decode(result)
 
-        # Structure: nonce (16 bytes) + ciphertext + tag (16 bytes)
-        # Minimum size is 16 + 16 = 32 bytes for empty data
-        self.assertGreaterEqual(len(decoded), 32)
+        # Structure: nonce (12 bytes) + ciphertext + tag (16 bytes)
+        # Minimum size is 12 + 16 = 28 bytes for empty data
+        self.assertGreaterEqual(len(decoded), 28)
 
-        # Extract components
-        nonce = decoded[:16]
-        tag = decoded[-16:]
-        ciphertext = decoded[16:-16]
+        # Extract components (12-byte nonce for cryptography library)
+        nonce = decoded[:12]
+        # Ciphertext includes the 16-byte auth tag at the end
+        ciphertext_with_tag = decoded[12:]
 
         print("AUTHENTICATED ENCRYPTION STRUCTURE:")
         print(f"  Nonce length: {len(nonce)} bytes")
-        print(f"  Ciphertext length: {len(ciphertext)} bytes")
-        print(f"  Auth tag length: {len(tag)} bytes")
+        print(f"  Ciphertext+Tag length: {len(ciphertext_with_tag)} bytes")
         print(f"  Total output: {len(decoded)} bytes")
 
         print("\nGCM MODE BENEFITS:")
@@ -190,7 +189,7 @@ class TestSecureCryptographicImplementation(TestCase):
         with informative error messages.
         """
         # Test with mocked failure
-        with patch('web.views.AES.new', side_effect=Exception("Mock crypto failure")):
+        with patch('web.views.AESGCM', side_effect=Exception("Mock crypto failure")):
             with self.assertRaises(ValueError) as context:
                 get_file_checksum(b"test_data")
 

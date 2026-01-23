@@ -2,11 +2,11 @@ import base64
 import json
 import logging
 import os
+import secrets
 from datetime import date
 from typing import Any
 
-from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.forms import ModelForm
@@ -91,25 +91,27 @@ def get_file_checksum(data: bytes) -> str:
     Generate a secure checksum using AES-256-GCM authenticated encryption.
 
     This function uses AES-256 in GCM mode, which provides both encryption
-    and authentication. A random 16-byte nonce is generated for each
+    and authentication. A random 12-byte nonce is generated for each
     encryption operation to ensure semantic security.
 
     Args:
         data: Bytes to encrypt and authenticate.
 
     Returns:
-        Base64-encoded string containing nonce + ciphertext + auth tag.
+        Base64-encoded string containing nonce + ciphertext (includes auth tag).
 
     Raises:
         ValueError: If encryption fails due to invalid key or data.
     """
     try:
-        nonce = get_random_bytes(16)
-        cipher = AES.new(ENCRYPTION_KEY, AES.MODE_GCM, nonce=nonce)
-        ciphertext, tag = cipher.encrypt_and_digest(data)
+        # Generate a random 12-byte nonce (recommended size for GCM)
+        nonce = secrets.token_bytes(12)
+        aesgcm = AESGCM(ENCRYPTION_KEY)
+        # encrypt() returns ciphertext with auth tag appended
+        ciphertext = aesgcm.encrypt(nonce, data, None)
 
-        # Combine nonce, ciphertext, and authentication tag
-        encrypted = nonce + ciphertext + tag
+        # Combine nonce and ciphertext (which includes the auth tag)
+        encrypted = nonce + ciphertext
         return base64.b64encode(encrypted).decode("UTF-8")
     except Exception as e:
         logger.error("Encryption error: %s", str(e))
