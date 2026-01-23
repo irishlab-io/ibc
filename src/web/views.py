@@ -6,7 +6,9 @@ import secrets
 from datetime import date
 from typing import Any
 
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.forms import ModelForm
@@ -33,12 +35,19 @@ AES_256_KEY_SIZE = 32
 
 # Load encryption key from environment variable or derive from Django SECRET_KEY.
 # The key must be exactly 32 bytes for AES-256.
-ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", "").encode("UTF-8")[:AES_256_KEY_SIZE]
-if len(ENCRYPTION_KEY) < AES_256_KEY_SIZE:
-    # Derive a 32-byte key from Django's SECRET_KEY as fallback
-    ENCRYPTION_KEY = settings.SECRET_KEY.encode("UTF-8")[:AES_256_KEY_SIZE].ljust(
-        AES_256_KEY_SIZE, b"\0"
+_env_key = os.environ.get("ENCRYPTION_KEY", "").encode("UTF-8")
+if len(_env_key) >= AES_256_KEY_SIZE:
+    ENCRYPTION_KEY = _env_key[:AES_256_KEY_SIZE]
+else:
+    # Derive a 32-byte key from Django's SECRET_KEY using PBKDF2 for proper key derivation.
+    # This ensures cryptographically strong key material even if SECRET_KEY is weak.
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=AES_256_KEY_SIZE,
+        salt=b"insecure-bank-encryption-salt",  # Fixed salt for deterministic key derivation
+        iterations=100000,
     )
+    ENCRYPTION_KEY = kdf.derive(settings.SECRET_KEY.encode("UTF-8"))
 
 checksum = [""]
 resources = os.path.join(settings.BASE_DIR, "src", "web", "static", "resources")

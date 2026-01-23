@@ -1038,7 +1038,7 @@ class TestTransferFormAndHelperFunctions(ViewTestMixin, TestCase):
         mock_cipher = Mock()
         mock_cipher.encrypt.return_value = b'ciphertext_with_tag'
         mock_aesgcm.return_value = mock_cipher
-        mock_token_bytes.return_value = b'random_12_by'  # 12 bytes for GCM nonce
+        mock_token_bytes.return_value = b'random12byte'  # Exactly 12 bytes for GCM nonce
         mock_b64encode.return_value = b'base64_encoded'
 
         result = get_file_checksum(b'test_data')
@@ -1046,9 +1046,9 @@ class TestTransferFormAndHelperFunctions(ViewTestMixin, TestCase):
         self.assertEqual(result, 'base64_encoded')
         # Verify AESGCM was used
         mock_aesgcm.assert_called_once()
-        mock_cipher.encrypt.assert_called_once_with(b'random_12_by', b'test_data', None)
+        mock_cipher.encrypt.assert_called_once_with(b'random12byte', b'test_data', None)
         # Verify nonce + ciphertext are combined
-        mock_b64encode.assert_called_once_with(b'random_12_by' + b'ciphertext_with_tag')
+        mock_b64encode.assert_called_once_with(b'random12byte' + b'ciphertext_with_tag')
 
     def test_get_file_checksum_produces_different_output(self):
         """Test get_file_checksum produces different output for same input (random nonce)."""
