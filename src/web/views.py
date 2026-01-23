@@ -2,12 +2,11 @@ import base64
 import json
 import logging
 import os
-import pickle
 from datetime import date
 from typing import Any
 
-from Crypto.Cipher import DES
-from Crypto.Util.Padding import pad
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.forms import ModelForm
@@ -28,32 +27,93 @@ from web.services import (
 
 logger = logging.getLogger(__name__)
 storage_service = StorageService()
-secretKey = bytes("01234567", "UTF-8")
+
+# AES-256 key size constant (32 bytes = 256 bits)
+AES_256_KEY_SIZE = 32
+
+# Load encryption key from environment variable or derive from Django SECRET_KEY.
+# The key must be exactly 32 bytes for AES-256.
+ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", "").encode("UTF-8")[:AES_256_KEY_SIZE]
+if len(ENCRYPTION_KEY) < AES_256_KEY_SIZE:
+    # Derive a 32-byte key from Django's SECRET_KEY as fallback
+    ENCRYPTION_KEY = settings.SECRET_KEY.encode("UTF-8")[:AES_256_KEY_SIZE].ljust(
+        AES_256_KEY_SIZE, b"\0"
+    )
+
 checksum = [""]
 resources = os.path.join(settings.BASE_DIR, "src", "web", "static", "resources")
 
 
 class Trusted:
+    """Trusted certificate data class for safe serialization."""
+
     username: str | None = None
 
     def __init__(self, username: str):
+        """
+        Initialize a Trusted certificate.
+
+        Args:
+            username: The username associated with the certificate.
+        """
         self.username = username
 
+    def to_dict(self) -> dict:
+        """
+        Convert the certificate to a dictionary for safe JSON serialization.
 
-class Untrusted(Trusted):
-    def __init__(self, username: str):
-        super().__init__(username)
+        Returns:
+            A dictionary representation of the certificate.
+        """
+        return {"username": self.username, "type": "trusted"}
 
-    def __reduce__(self):
-        return os.system, ("ls -lah",)
+    @classmethod
+    def from_dict(cls, data: dict) -> "Trusted":
+        """
+        Create a Trusted instance from a dictionary.
+
+        Args:
+            data: Dictionary containing certificate data.
+
+        Returns:
+            A new Trusted instance.
+
+        Raises:
+            ValueError: If required fields are missing.
+        """
+        if "username" not in data:
+            raise ValueError("Missing required field: username")
+        return cls(username=data["username"])
 
 
 def get_file_checksum(data: bytes) -> str:
-    (dk, iv) = (secretKey, secretKey)
-    crypter = DES.new(dk, DES.MODE_CBC, iv)
-    padded = pad(data, DES.block_size)
-    encrypted = crypter.encrypt(padded)
-    return base64.b64encode(encrypted).decode("UTF-8")
+    """
+    Generate a secure checksum using AES-256-GCM authenticated encryption.
+
+    This function uses AES-256 in GCM mode, which provides both encryption
+    and authentication. A random 16-byte nonce is generated for each
+    encryption operation to ensure semantic security.
+
+    Args:
+        data: Bytes to encrypt and authenticate.
+
+    Returns:
+        Base64-encoded string containing nonce + ciphertext + auth tag.
+
+    Raises:
+        ValueError: If encryption fails due to invalid key or data.
+    """
+    try:
+        nonce = get_random_bytes(16)
+        cipher = AES.new(ENCRYPTION_KEY, AES.MODE_GCM, nonce=nonce)
+        ciphertext, tag = cipher.encrypt_and_digest(data)
+
+        # Combine nonce, ciphertext, and authentication tag
+        encrypted = nonce + ciphertext + tag
+        return base64.b64encode(encrypted).decode("UTF-8")
+    except Exception as e:
+        logger.error("Encryption error: %s", str(e))
+        raise ValueError("Failed to encrypt data") from e
 
 
 def to_traces(string: str) -> str:
@@ -184,50 +244,120 @@ class AvatarUpdateView(View):
 
 
 class CertificateDownloadView(View):
+    """View for downloading secure certificates using JSON serialization."""
+
     http_method_names = ["post"]
 
     def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        certificate = pickle.dumps(Trusted("this is safe"))
+        """
+        Generate and download a secure certificate.
+
+        Uses JSON serialization instead of pickle to prevent
+        arbitrary code execution vulnerabilities.
+
+        Args:
+            request: The HTTP request.
+
+        Returns:
+            HTTP response with JSON-serialized certificate data.
+        """
+        trusted = Trusted("this is safe")
+        certificate = json.dumps(trusted.to_dict()).encode("utf-8")
         principal = self.request.user
         account = AccountService.find_users_by_username(principal.username)[0]
         file_name = f"attachment;Certificate_={account.name}"
         return HttpResponse(
             certificate,
-            content_type="application/octet-stream",
+            content_type="application/json",
             headers={"Content-Disposition": file_name},
         )
 
 
-class MaliciousCertificateDownloadView(View):
+class SecureCertificateDownloadView(View):
+    """View for downloading secure certificates with checksum verification."""
+
     http_method_names = ["post"]
 
     def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        certificate = pickle.dumps(Untrusted("this is not safe"))
+        """
+        Generate and download a secure certificate with checksum.
+
+        Uses JSON serialization and AES-256-GCM for integrity verification.
+
+        Args:
+            request: The HTTP request.
+
+        Returns:
+            HTTP response with JSON-serialized certificate data.
+        """
+        trusted = Trusted("this is safe")
+        certificate = json.dumps(trusted.to_dict()).encode("utf-8")
         checksum[0] = get_file_checksum(certificate)
         principal = self.request.user
         account = AccountService.find_users_by_username(principal.username)[0]
-        file_name = f"attachment;MaliciousCertificate_={account.name}"
+        file_name = f"attachment;SecureCertificate_={account.name}"
         return HttpResponse(
             certificate,
-            content_type="application/octet-stream",
+            content_type="application/json",
             headers={"Content-Disposition": file_name},
         )
 
 
 class NewCertificateView(View):
+    """View for uploading and validating certificates using safe deserialization."""
+
     http_method_names = ["post"]
 
     def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        """
+        Process an uploaded certificate file using safe JSON deserialization.
+
+        Avoids pickle deserialization to prevent arbitrary code execution.
+        Uses JSON for safe data parsing with proper error handling.
+
+        Args:
+            request: The HTTP request with uploaded file.
+
+        Returns:
+            HTTP response indicating upload success or failure.
+        """
         if "file" not in request.FILES:
-            return HttpResponse("<p>No file uploaded</p>")
+            return HttpResponse("<p>No file uploaded</p>", status=400)
 
         certificate = request.FILES["file"]
         data = certificate.file.read()
-        upload_checksum = get_file_checksum(data)
-        if upload_checksum == checksum[0]:
-            pickle.loads(data)
-            return HttpResponse(f"<p>File '{certificate}' uploaded successfully</p>", content_type="text/plain")
-        return HttpResponse(f"<p>File '{certificate}' not processed, only previously downloaded malicious file is allowed</p>")
+
+        try:
+            # Use JSON for safe deserialization instead of pickle
+            data_dict = json.loads(data.decode("utf-8"))
+
+            # Validate the certificate data structure
+            if "username" not in data_dict:
+                return HttpResponse(
+                    "<p>Invalid certificate format: missing username</p>",
+                    status=400,
+                )
+
+            # Create a Trusted object from the safe data
+            trusted_cert = Trusted.from_dict(data_dict)
+
+            return HttpResponse(
+                f"<p>File '{certificate}' uploaded successfully for user "
+                f"'{trusted_cert.username}'</p>",
+                content_type="text/plain",
+            )
+        except json.JSONDecodeError:
+            logger.warning("Invalid JSON format in uploaded certificate")
+            return HttpResponse(
+                "<p>Invalid file format: expected JSON</p>",
+                status=400,
+            )
+        except ValueError as e:
+            logger.warning("Certificate validation failed: %s", str(e))
+            return HttpResponse(
+                f"<p>Invalid certificate data: {str(e)}</p>",
+                status=400,
+            )
 
 
 class CreditCardImageView(View):

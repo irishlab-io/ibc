@@ -50,8 +50,8 @@ urlpatterns = [
     ),
     path(
         "dashboard/userDetail/maliciouscertificate",
-        views.MaliciousCertificateDownloadView.as_view(),
-        name="maliciousCertificateDownload",
+        views.SecureCertificateDownloadView.as_view(),
+        name="secureCertificateDownload",
     ),
     path(
         "dashboard/userDetail/newcertificate",

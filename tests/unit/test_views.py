@@ -3,7 +3,7 @@ Unit tests for Django view classes.
 
 This module provides comprehensive unit test coverage for all view classes in the
 Insecure Bank application, testing authentication flows, HTTP handling, and
-template rendering while preserving intentional security vulnerabilities.
+template rendering.
 
 Test Categories:
 - Authentication Views (LoginView, LogoutView)
@@ -11,20 +11,17 @@ Test Categories:
 - Dashboard and User Views (DashboardView, UserDetailView)
 - Transfer Views (TransferView)
 - File and Avatar Views (AvatarView, AvatarUpdateView)
-- Certificate Views (CertificateDownloadView, MaliciousCertificateDownloadView, NewCertificateView)
+- Certificate Views (CertificateDownloadView, SecureCertificateDownloadView, NewCertificateView)
 - Image Views (CreditCardImageView)
 
-Constitutional Requirements:
-- All tests must preserve intentional security vulnerabilities
-- SQL injection vulnerabilities in service calls must remain intact
-- Pickle deserialization vulnerabilities must be preserved
-- Command injection vulnerabilities must remain testable
-- Authentication bypass vulnerabilities must be maintained
+Security Improvements:
+- Certificate serialization now uses JSON instead of pickle
+- Encryption now uses AES-256-GCM instead of DES
+- Encryption keys are loaded from environment variables
 """
 
 import json
 import os
-import pickle
 import tempfile
 from datetime import date
 from unittest.mock import Mock, patch, MagicMock
@@ -41,8 +38,8 @@ from web.models import Account, CashAccount, CreditAccount, Transfer
 from web.views import (
     LoginView, LogoutView, AdminView, ActivityView, ActivityCreditView,
     DashboardView, UserDetailView, AvatarView, AvatarUpdateView,
-    CertificateDownloadView, MaliciousCertificateDownloadView, NewCertificateView,
-    CreditCardImageView, TransferView, TransferForm, Trusted, Untrusted,
+    CertificateDownloadView, SecureCertificateDownloadView, NewCertificateView,
+    CreditCardImageView, TransferView, TransferForm, Trusted,
     get_file_checksum, to_traces
 )
 
@@ -637,11 +634,9 @@ class TestCertificateViews(ViewTestMixin, TestCase):
         self.assertEqual(view.http_method_names, ['post'])
 
     @patch('web.views.AccountService.find_users_by_username')
-    @patch('web.views.pickle.dumps')
-    def test_certificate_download_view(self, mock_pickle, mock_find_users):
-        """Test CertificateDownloadView generates safe certificate."""
+    def test_certificate_download_view(self, mock_find_users):
+        """Test CertificateDownloadView generates safe certificate using JSON."""
         mock_find_users.return_value = [self.account]
-        mock_pickle.return_value = b'serialized_trusted_object'
 
         request = self.create_authenticated_request('POST', '/certificate-download')
 
@@ -653,51 +648,47 @@ class TestCertificateViews(ViewTestMixin, TestCase):
 
         # Verify response
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'serialized_trusted_object')
-        self.assertEqual(response['Content-Type'], 'application/octet-stream')
+        self.assertEqual(response['Content-Type'], 'application/json')
         self.assertIn('attachment;Certificate_=Test', response['Content-Disposition'])
 
-        # Verify Trusted object was pickled (safe)
-        mock_pickle.assert_called_once()
-        pickle_call_args = mock_pickle.call_args[0][0]
-        self.assertIsInstance(pickle_call_args, Trusted)
+        # Verify JSON content with Trusted data
+        data = json.loads(response.content.decode('utf-8'))
+        self.assertEqual(data['username'], 'this is safe')
+        self.assertEqual(data['type'], 'trusted')
 
-    def test_malicious_certificate_download_view_allowed_methods(self):
-        """Test MaliciousCertificateDownloadView allows only POST method."""
-        from web.views import MaliciousCertificateDownloadView
-        view = MaliciousCertificateDownloadView()
+    def test_secure_certificate_download_view_allowed_methods(self):
+        """Test SecureCertificateDownloadView allows only POST method."""
+        from web.views import SecureCertificateDownloadView
+        view = SecureCertificateDownloadView()
         self.assertEqual(view.http_method_names, ['post'])
 
     @patch('web.views.AccountService.find_users_by_username')
-    @patch('web.views.pickle.dumps')
     @patch('web.views.get_file_checksum')
-    def test_malicious_certificate_download_view(self, mock_checksum, mock_pickle, mock_find_users):
-        """Test MaliciousCertificateDownloadView generates malicious certificate."""
+    def test_secure_certificate_download_view(self, mock_checksum, mock_find_users):
+        """Test SecureCertificateDownloadView generates secure certificate."""
         mock_find_users.return_value = [self.account]
-        mock_pickle.return_value = b'serialized_untrusted_object'
-        mock_checksum.return_value = 'fake_checksum'
+        mock_checksum.return_value = 'secure_checksum'
 
-        request = self.create_authenticated_request('POST', '/malicious-certificate-download')
+        request = self.create_authenticated_request('POST', '/secure-certificate-download')
 
-        from web.views import MaliciousCertificateDownloadView, checksum
-        view = MaliciousCertificateDownloadView()
+        from web.views import SecureCertificateDownloadView, checksum
+        view = SecureCertificateDownloadView()
         view.request = request
 
         response = view.post(request)
 
         # Verify response
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.content, b'serialized_untrusted_object')
-        self.assertEqual(response['Content-Type'], 'application/octet-stream')
-        self.assertIn('attachment;MaliciousCertificate_=Test', response['Content-Disposition'])
+        self.assertEqual(response['Content-Type'], 'application/json')
+        self.assertIn('attachment;SecureCertificate_=Test', response['Content-Disposition'])
 
-        # Verify Untrusted object was pickled (vulnerable)
-        mock_pickle.assert_called_once()
-        pickle_call_args = mock_pickle.call_args[0][0]
-        self.assertIsInstance(pickle_call_args, Untrusted)
+        # Verify JSON content with Trusted data
+        data = json.loads(response.content.decode('utf-8'))
+        self.assertEqual(data['username'], 'this is safe')
+        self.assertEqual(data['type'], 'trusted')
 
-        # Verify checksum was stored globally (vulnerability)
-        self.assertEqual(checksum[0], 'fake_checksum')
+        # Verify checksum was stored
+        self.assertEqual(checksum[0], 'secure_checksum')
 
     def test_new_certificate_view_allowed_methods(self):
         """Test NewCertificateView allows only POST method."""
@@ -715,19 +706,13 @@ class TestCertificateViews(ViewTestMixin, TestCase):
 
         response = view.post(request)
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 400)
         self.assertEqual(response.content, b'<p>No file uploaded</p>')
 
-    @patch('web.views.get_file_checksum')
-    @patch('web.views.pickle.loads')
-    def test_new_certificate_view_valid_checksum(self, mock_pickle_loads, mock_checksum):
-        """Test NewCertificateView with valid checksum (pickle deserialization vulnerability)."""
-        # Set up global checksum
-        from web.views import checksum
-        checksum[0] = 'expected_checksum'
-
-        mock_file = SimpleUploadedFile("malicious.pkl", b'malicious_pickle_data')
-        mock_checksum.return_value = 'expected_checksum'
+    def test_new_certificate_view_valid_json(self):
+        """Test NewCertificateView with valid JSON certificate."""
+        valid_cert = json.dumps({"username": "testuser", "type": "trusted"}).encode('utf-8')
+        mock_file = SimpleUploadedFile("certificate.json", valid_cert)
 
         request = self.create_authenticated_request('POST', '/new-certificate', {'file': mock_file})
 
@@ -736,19 +721,15 @@ class TestCertificateViews(ViewTestMixin, TestCase):
 
         response = view.post(request)
 
-        # Should execute pickle.loads (vulnerability)
-        mock_pickle_loads.assert_called_once_with(b'malicious_pickle_data')
+        # Should process successfully using JSON deserialization
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'uploaded successfully', response.content)
+        self.assertIn(b'testuser', response.content)
 
-    @patch('web.views.get_file_checksum')
-    def test_new_certificate_view_invalid_checksum(self, mock_checksum):
-        """Test NewCertificateView with invalid checksum."""
-        from web.views import checksum
-        checksum[0] = 'expected_checksum'
-
-        mock_file = SimpleUploadedFile("innocent.pkl", b'different_data')
-        mock_checksum.return_value = 'different_checksum'
+    def test_new_certificate_view_invalid_json(self):
+        """Test NewCertificateView with invalid JSON format."""
+        invalid_data = b'not valid json'
+        mock_file = SimpleUploadedFile("invalid.json", invalid_data)
 
         request = self.create_authenticated_request('POST', '/new-certificate', {'file': mock_file})
 
@@ -757,9 +738,23 @@ class TestCertificateViews(ViewTestMixin, TestCase):
 
         response = view.post(request)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'not processed', response.content)
-        self.assertIn(b'only previously downloaded malicious file is allowed', response.content)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b'Invalid file format', response.content)
+
+    def test_new_certificate_view_missing_username(self):
+        """Test NewCertificateView with JSON missing username field."""
+        invalid_cert = json.dumps({"type": "trusted"}).encode('utf-8')  # No username
+        mock_file = SimpleUploadedFile("certificate.json", invalid_cert)
+
+        request = self.create_authenticated_request('POST', '/new-certificate', {'file': mock_file})
+
+        from web.views import NewCertificateView
+        view = NewCertificateView()
+
+        response = view.post(request)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b'missing username', response.content)
 
 
 @pytest.mark.unit
@@ -1015,32 +1010,64 @@ class TestTransferFormAndHelperFunctions(ViewTestMixin, TestCase):
         trusted = Trusted('testuser')
         self.assertEqual(trusted.username, 'testuser')
 
-    def test_untrusted_class_reduce_vulnerability(self):
-        """Test Untrusted class __reduce__ method (pickle vulnerability)."""
-        untrusted = Untrusted('testuser')
+    def test_trusted_class_to_dict(self):
+        """Test Trusted class to_dict method for JSON serialization."""
+        trusted = Trusted('testuser')
+        result = trusted.to_dict()
+        self.assertEqual(result, {'username': 'testuser', 'type': 'trusted'})
 
-        # The __reduce__ method should return os.system and malicious command
-        reduce_result = untrusted.__reduce__()
+    def test_trusted_class_from_dict(self):
+        """Test Trusted class from_dict method for safe deserialization."""
+        data = {'username': 'testuser', 'type': 'trusted'}
+        trusted = Trusted.from_dict(data)
+        self.assertEqual(trusted.username, 'testuser')
 
-        self.assertEqual(reduce_result[0], os.system)
-        self.assertEqual(reduce_result[1], ("ls -lah",))
+    def test_trusted_class_from_dict_missing_username(self):
+        """Test Trusted class from_dict raises error on missing username."""
+        data = {'type': 'trusted'}
+        with self.assertRaises(ValueError) as context:
+            Trusted.from_dict(data)
+        self.assertIn('username', str(context.exception))
 
-    @patch('web.views.DES')
+    @patch('web.views.AES')
+    @patch('web.views.get_random_bytes')
     @patch('web.views.base64.b64encode')
-    def test_get_file_checksum(self, mock_b64encode, mock_des):
-        """Test get_file_checksum function."""
-        # Mock DES encryption
-        mock_crypter = Mock()
-        mock_crypter.encrypt.return_value = b'encrypted_data'
-        mock_des.new.return_value = mock_crypter
+    def test_get_file_checksum_uses_aes_gcm(self, mock_b64encode, mock_random, mock_aes):
+        """Test get_file_checksum function uses AES-256-GCM encryption."""
+        # Mock AES encryption
+        mock_cipher = Mock()
+        mock_cipher.encrypt_and_digest.return_value = (b'ciphertext', b'tag')
+        mock_aes.new.return_value = mock_cipher
+        mock_aes.MODE_GCM = 6  # GCM mode constant
+        mock_random.return_value = b'random_nonce_16b'
         mock_b64encode.return_value = b'base64_encoded'
 
         result = get_file_checksum(b'test_data')
 
         self.assertEqual(result, 'base64_encoded')
-        mock_des.new.assert_called_once()
-        mock_crypter.encrypt.assert_called_once()
-        mock_b64encode.assert_called_once_with(b'encrypted_data')
+        # Verify AES-GCM was used
+        mock_aes.new.assert_called_once()
+        call_kwargs = mock_aes.new.call_args[1]
+        self.assertEqual(call_kwargs['nonce'], b'random_nonce_16b')
+        mock_cipher.encrypt_and_digest.assert_called_once_with(b'test_data')
+        # Verify nonce + ciphertext + tag are combined
+        mock_b64encode.assert_called_once_with(b'random_nonce_16b' + b'ciphertext' + b'tag')
+
+    def test_get_file_checksum_produces_different_output(self):
+        """Test get_file_checksum produces different output for same input (random nonce)."""
+        # Due to random nonce, same input should produce different outputs
+        result1 = get_file_checksum(b'test_data')
+        result2 = get_file_checksum(b'test_data')
+
+        # Results should be different due to random nonce
+        self.assertNotEqual(result1, result2)
+
+    def test_get_file_checksum_error_handling(self):
+        """Test get_file_checksum raises ValueError on encryption failure."""
+        with patch('web.views.AES.new', side_effect=Exception("Encryption failed")):
+            with self.assertRaises(ValueError) as context:
+                get_file_checksum(b'test_data')
+            self.assertIn('Failed to encrypt data', str(context.exception))
 
     @patch('os.system')
     def test_to_traces_command_injection_vulnerability(self, mock_system):
