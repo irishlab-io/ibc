@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ibc
+  annotations:
+    github.com/project-slug: irishlab-io/ibc
+spec:
+  type: other
+  lifecycle: unknown
+  owner: guests
