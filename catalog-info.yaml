@@ -1,3 +1,4 @@
+---
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
@@ -5,6 +6,6 @@ metadata:
   annotations:
     github.com/project-slug: irishlab-io/ibc
 spec:
-  type: other
-  lifecycle: unknown
-  owner: guests
+  type: service
+  owner: user:guest
+  lifecycle: experimental
