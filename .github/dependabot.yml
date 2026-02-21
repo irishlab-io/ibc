@@ -5,22 +5,65 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "sunday"
+      time: "01:00"
+      timezone: "America/Toronto"
+    cooldown:
+      default-days: 7
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "build"
     ignore:
-      - dependency-name: "python"
-        versions: ["3.11.x", "3.12.x", "3.13.x", "3.14.x", ">=4.0.0"]
-      - dependency-name: "python"
-        versions: [">3.10"]
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "01:00"
+      timezone: "America/Toronto"
+    cooldown:
+      default-days: 7
+    labels:
+      - "dependencies"
+      - "python"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    open-pull-requests-limit: 10
+    groups:
+      python-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "sunday"
+      time: "01:00"
+      timezone: "America/Toronto"
+    cooldown:
+      default-days: 7
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
     groups:
-      major:
-        applies-to: version-updates
-        update-types:
-          - "major"
-      minors-and-patches:
-        applies-to: version-updates
+      github-actions:
+        patterns:
+          - "*"
         update-types:
           - "minor"
           - "patch"
