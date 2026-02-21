@@ -337,19 +337,3 @@ jobs:
         run: |
           echo Run Gating Check
         shell: bash
-
-  deploy:
-    needs:
-      - gating
-    name: Deploy to dev
-    uses: ./.github/workflows/cd.yml
-    with:
-      env: "dev"
-      image-tag: ${{ needs.docker_build.outputs.image-tag }}
-    secrets:
-      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-      TS_OAUTH_CLIENT_SECRET: ${{ secrets.TS_OAUTH_CLIENT_SECRET }}
-      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-      CF_TUNNEL_TOKEN: ${{ secrets.CF_TUNNEL_TOKEN }}

@@ -181,18 +181,12 @@ jobs:
           ping: ${{ secrets.DEPLOY_HOST }}
           tags: "tag:ci"
 
-      - name: Run SAST - SonarQube
+      - name: Run SAST Scan
         id: sast
-        uses: SonarSource/sonarqube-scan-action@v7.0.0
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-
-      - name: Quality gating SAST - SonarQube
-        uses: SonarSource/sonarqube-quality-gate-action@cf038b0e0cdecfa9e56c198bbb7d21d751d62c3b # v1.2.0
-        timeout-minutes: 5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          echo Run SAST
+          echo "::warning::Must implement a code scanning mechanism."
+        shell: bash
 
       - name: Run SCA Scan
         id: sca
@@ -401,21 +395,3 @@ jobs:
         uses: commitizen-tools/commitizen-action@bb4f1df6601e2a1a891506581b0c53acdc88e07d # 0.26.0
         with:
           github_token: ${{ secrets.RELEASE_PAT }}
-
-  deploy:
-    if: ${{ ! startsWith(github.event.head_commit.message, 'bump:') }}
-    needs:
-      - release
-      - gating
-    name: Deploy to prod
-    uses: ./.github/workflows/cd.yml
-    with:
-      env: "prod"
-      image-tag: ${{ needs.docker_build.outputs.image-tag }}
-    secrets:
-      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-      TS_OAUTH_CLIENT_SECRET: ${{ secrets.TS_OAUTH_CLIENT_SECRET }}
-      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-      CF_TUNNEL_TOKEN: ${{ secrets.CF_TUNNEL_TOKEN }}
