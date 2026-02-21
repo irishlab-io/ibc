@@ -1,5 +1,7 @@
 # Formation
 
+uvx uv-upgrade --profile with_pinned
+
 Application Security Testing (AST) is the process of finding and fixing security vulnerabilities in software throughout the development lifecycle (SDLC) to make apps resilient to threats like injection attacks, data breaches, and unauthorized access, using methods like SAST (code analysis), DAST (runtime testing), SCA (dependency scanning), and manual pen testing to secure applications before attackers exploit them.
 
 AST integrates automated tools and manual checks into existing workflows (DevSecOps) to systematically scan, analyze, and report risks in code, dependencies, and configurations, securing the application from development through deployment.
