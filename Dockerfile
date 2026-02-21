@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.10.11-alpine3.18 AS builder
+FROM python:3.10.11-alpine3.16 AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.9.18@sha256:5713fa8217f92b80223bc83aac7db36ec80a84437dbc0d04bbc659cae030d8c9 /uv /usr/local/bin/uv
 
@@ -21,7 +21,7 @@ RUN uv pip install --no-cache-dir -r requirements.txt
 RUN uv pip install --no-cache-dir httplib2==0.14.0 pycrypto==2.6.1 urllib3==1.24.3
 
 # Runtime stage
-FROM python:3.10.11-alpine3.18 AS runtime
+FROM python:3.10.11-alpine3.16 AS runtime
 
 ARG GIT_COMMIT="unknown"
 ARG REPO_URL=""
