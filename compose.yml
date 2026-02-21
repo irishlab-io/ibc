@@ -4,7 +4,7 @@ name: ibc
 services:
   ibc:
     container_name: ibc
-    image: ghcr.io/mighty-muffin/ibc:latest
+    image: ghcr.io/irishlab-io/ibc:latest
     restart: unless-stopped
     ports:
       - 8000:8000
