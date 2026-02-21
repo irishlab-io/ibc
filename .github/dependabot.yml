@@ -15,10 +15,6 @@ updates:
       - "docker"
     commit-message:
       prefix: "build"
-    ignore:
-      - dependency-name: "*"
-        update-types:
-          - "version-update:semver-major"
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
