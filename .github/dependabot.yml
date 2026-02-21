@@ -32,11 +32,6 @@ updates:
       include: "scope"
     open-pull-requests-limit: 10
     groups:
-      python-major-patch:
-        patterns:
-          - "*"
-        update-types:
-          - "major"
       python-minor-patch:
         patterns:
           - "*"
