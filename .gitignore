@@ -111,6 +111,7 @@ pip-log.txt
 poetry.toml
 profile_default/
 pyrightconfig.json
+sbom.json
 sdist/
 share/python-wheels/
 target/
