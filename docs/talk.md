@@ -13,8 +13,22 @@ uv sync && uv build --verbose
 
 ```bash
 docker build . --tag ibc
-syft scan ibc -o json=sbom.json
+syft scan ibc --output cyclonedx-json --file sbom.json
 grype sbom:sbom.json
+```
+
+## SBOM Central Command
+
+Talk about DTrack a bit...
+
+```bash
+curl -X "POST" "https://dependencytrack.local.irishlab.io" \
+  -H "Content-Type: multipart/form-data" \
+  -H "X-Api-Key: ${DEPENDENCY_TRACK}$" \
+  -F "autoCreate=true" \
+  -F "projectName=A-demo-test" \
+  -F "projectVersion=0.0.1" \
+  -F "bom=@sbom.json"
 ```
 
 ## Fixing packages vuln
