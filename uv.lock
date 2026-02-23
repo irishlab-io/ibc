@@ -572,7 +572,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "asgiref", specifier = "==3.7.2" },
-    { name = "django", specifier = "==4.2.4,<5.0.0" },
+    { name = "django", specifier = "==4.2.4,<6.0.0" },
     { name = "pycryptodome", specifier = "==3.18.0" },
     { name = "pyyaml", specifier = "==5.3.1" },
     { name = "sqlparse", specifier = "==0.4.2" },
@@ -581,34 +581,34 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 build = [
-    { name = "build", specifier = ">=0.10.0" },
-    { name = "packaging", specifier = ">=23.1" },
-    { name = "wheel", specifier = ">=0.41.0" },
+    { name = "build", specifier = ">=1.4.0" },
+    { name = "packaging", specifier = ">=26.0" },
+    { name = "wheel", specifier = ">=0.46.3" },
 ]
 dev = [
-    { name = "build", specifier = ">=0.10.0" },
-    { name = "click", specifier = ">=8.1.6" },
-    { name = "faker", specifier = ">=33.1.0" },
+    { name = "build", specifier = ">=1.4.0" },
+    { name = "click", specifier = ">=8.3.1" },
+    { name = "faker", specifier = ">=40.4.0" },
     { name = "ggshield", specifier = ">=1.10.8" },
-    { name = "pathspec", specifier = ">=0.11.2" },
-    { name = "pip-tools", specifier = ">=7.2.0" },
-    { name = "platformdirs", specifier = ">=3.10.0" },
-    { name = "playwright", specifier = ">=1.57.0" },
-    { name = "pre-commit", specifier = ">=4.5.0" },
-    { name = "pyproject-hooks", specifier = ">=1.0.0" },
-    { name = "pytest", specifier = ">=8.4.2" },
+    { name = "pathspec", specifier = ">=1.0.4" },
+    { name = "pip-tools", specifier = ">=7.5.3" },
+    { name = "platformdirs", specifier = ">=4.9.2" },
+    { name = "playwright", specifier = ">=1.58.0" },
+    { name = "pre-commit", specifier = ">=4.5.1" },
+    { name = "pyproject-hooks", specifier = ">=1.2.0" },
+    { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
-    { name = "pytest-django", specifier = ">=4.11.1" },
+    { name = "pytest-django", specifier = ">=4.12.0" },
     { name = "pytest-mock", specifier = ">=3.15.1" },
     { name = "pytest-playwright", specifier = ">=0.7.2" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
-    { name = "ruff", specifier = ">=0.14.4" },
-    { name = "tomli", specifier = ">=2.0.1" },
-    { name = "ty", specifier = ">=0.0.1a34" },
+    { name = "ruff", specifier = ">=0.15.2" },
+    { name = "tomli", specifier = ">=2.4.0" },
+    { name = "ty", specifier = ">=0.0.18" },
 ]
 docs = [
-    { name = "mkdocs", specifier = ">=1.5.0" },
-    { name = "mkdocs-material", specifier = ">=9.5.0" },
+    { name = "mkdocs", specifier = ">=1.6.1" },
+    { name = "mkdocs-material", specifier = ">=9.7.2" },
 ]
 
 [[package]]

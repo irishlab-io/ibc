@@ -1,7 +1,5 @@
 # Talk
 
-uvx uv-upgrade
-
 ## Welcome
 
 ```bash
@@ -9,17 +7,26 @@ uv venv .venv --python 3.10 --clear && source .venv/bin/activate
 uv sync && uv build --verbose
 ```
 
-## Let's ship a container
+## Some tools
 
 ```bash
-docker build . --tag ibc
-syft scan ibc --output cyclonedx-json --file sbom.json
+syft scan docker.io/python:3.10.11-bullseye --output cyclonedx-json=sbom.json
 grype sbom:sbom.json
 ```
 
 ## SBOM Central Command
 
 Talk about DTrack a bit...
+
+## Let's ship a container
+
+```bash
+docker build . --tag ibc
+syft scan ibc --output cyclonedx-json=sbom.json
+grype sbom:sbom.json
+```
+
+DTrack = API-friendly
 
 ```bash
 curl -X "POST" "https://dependencytrack.local.irishlab.io" \

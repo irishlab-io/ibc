@@ -6,7 +6,7 @@ version = "0.2.0"
 requires-python = ">=3.10"
 dependencies = [
     "asgiref==3.7.2",
-    "django==4.2.4,<5.0.0",
+    "django==4.2.4,<6.0.0",
     "pycryptodome==3.18.0",
     "pyyaml==5.3.1",
     "sqlparse==0.4.2",
@@ -16,34 +16,34 @@ dependencies = [
 
 [dependency-groups]
 build = [
-    "build>=0.10.0",
-    "packaging>=23.1",
-    "wheel>=0.41.0",
+    "build>=1.4.0",
+    "packaging>=26.0",
+    "wheel>=0.46.3",
 ]
 dev = [
-    "build>=0.10.0",
-    "click>=8.1.6",
-    "faker>=33.1.0",
+    "build>=1.4.0",
+    "click>=8.3.1",
+    "faker>=40.4.0",
     "ggshield>=1.10.8",
-    "pathspec>=0.11.2",
-    "pip-tools>=7.2.0",
-    "platformdirs>=3.10.0",
-    "playwright>=1.57.0",
-    "pre-commit>=4.5.0",
-    "pyproject-hooks>=1.0.0",
+    "pathspec>=1.0.4",
+    "pip-tools>=7.5.3",
+    "platformdirs>=4.9.2",
+    "playwright>=1.58.0",
+    "pre-commit>=4.5.1",
+    "pyproject-hooks>=1.2.0",
     "pytest-cov>=7.0.0",
-    "pytest-django>=4.11.1",
+    "pytest-django>=4.12.0",
     "pytest-mock>=3.15.1",
     "pytest-playwright>=0.7.2",
     "pytest-xdist>=3.8.0",
-    "pytest>=8.4.2",
-    "ruff>=0.14.4",
-    "tomli>=2.0.1",
-    "ty>=0.0.1a34",
+    "pytest>=9.0.2",
+    "ruff>=0.15.2",
+    "tomli>=2.4.0",
+    "ty>=0.0.18",
 ]
 docs = [
-    "mkdocs>=1.5.0",
-    "mkdocs-material>=9.5.0",
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.7.2",
 ]
 
 
