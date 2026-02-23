@@ -1,5 +1,5 @@
 # Build stage
-FROM python:3.10.11-alpine3.16 AS builder
+FROM docker.io/python:3.10.11-bullseye AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.9.18@sha256:5713fa8217f92b80223bc83aac7db36ec80a84437dbc0d04bbc659cae030d8c9 /uv /usr/local/bin/uv
 
@@ -13,7 +13,9 @@ WORKDIR /app
 
 COPY requirements.txt .
 
-RUN apk add --no-cache build-base libffi-dev
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends build-essential libffi-dev && \
+  rm -rf /var/lib/apt/lists/*
 
 RUN uv venv /app/.venv
 
@@ -21,7 +23,7 @@ RUN uv pip install --no-cache-dir -r requirements.txt
 RUN uv pip install --no-cache-dir httplib2==0.14.0 pycrypto==2.6.1 urllib3==1.24.3
 
 # Runtime stage
-FROM python:3.10.11-alpine3.16 AS runtime
+FROM docker.io/python:3.10.11-bullseye AS runtime
 
 ARG GIT_COMMIT="unknown"
 ARG REPO_URL=""
@@ -34,10 +36,11 @@ ENV REPO_URL=${REPO_URL}
 
 WORKDIR /app
 
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN groupadd --system appgroup && useradd --system --no-create-home --gid appgroup appuser
 
-RUN apk add --no-cache curl libffi tini && \
-  rm -rf /root/.cache
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends curl libffi-dev tini && \
+  rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/.venv /app/.venv
 
