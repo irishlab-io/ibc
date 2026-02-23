@@ -27,6 +27,12 @@ docker:
 	$(MAKE) docker-build
 	$(MAKE) docker-run
 
+talk:
+	$(MAKE) docker-quick
+	$(MAKE) sbom-generate
+	$(MAKE) sbom-analyse
+	$(MAKE) sbom-push
+
 run:
 	$(MAKE) migrate
 	$(MAKE) flight-check
@@ -43,6 +49,9 @@ docker-build:
 
 docker-clean:
 	docker stop ibc && docker rm ibc
+
+docker-quick:
+	docker build --file Dockerfile --tag ibc .
 
 docker-run:
 	docker run --detach --publish 8000:8000 --name ibc ibc
@@ -64,6 +73,15 @@ migrate:
 
 runserver:
 	uv run python manage.py runserver
+
+sbom-analyse:
+	grype sbom:sbom.json
+
+sbom-generate:
+	syft scan ibc --output cyclonedx-json=sbom.json
+
+sbom-push:
+	echo "Pushing SBOM to Dependency-Track..."
 
 setup:
 	uv venv .venv --python 3.10 --clear

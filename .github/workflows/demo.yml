@@ -87,13 +87,8 @@ jobs:
   sbom:
     name: Generate & Push SBOM to Dependency-Track
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - "3.10.11-alpine3.16"
-          - "3.10.11-alpine3.17"
-          - "3.10.11-alpine3.18"
+    needs:
+      - docker_build
     timeout-minutes: 5
 
     steps:
