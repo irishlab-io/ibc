@@ -41,8 +41,38 @@ curl -X "POST" "https://dependencytrack.local.irishlab.io" \
 ## Fixing packages vuln
 
 ```bash
-uvx pip-audit -r requirements.txt --aliases
-uvx uv-upgrade
+# fix pyproject.toml
+uvx uv-upx upgrade run
+uv export --no-dev --format requirements.txt > requirements.txt
+docker build . --tag ibc
+syft scan ibc --output cyclonedx-json=sbom.json
+```
+
+## Reduce exposed surface
+
+Let's not bundle the whole of `debian`, ship `alpine`
+
+```bash
+docker build . --tag ibc
+syft scan ibc --output cyclonedx-json=sbom.json
+```
+
+## Harden image
+
+The myth of cve-free image
+
+```bash
+docker build . --tag ibc
+syft scan ibc --output cyclonedx-json=sbom.json
+```
+
+## Someone is messing with us
+
+Fixing self-inflicted vulnerabilities
+
+```bash
+docker build . --tag ibc
+syft scan ibc --output cyclonedx-json=sbom.json
 ```
 
 ---

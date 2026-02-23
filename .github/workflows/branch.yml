@@ -4,7 +4,6 @@ name: CI - Branches
 on: # yamllint disable-line rule:truthy
   push:
     branches:
-      - demo/*
       - dev
       - feat/*
       - fix/*
