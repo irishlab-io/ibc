@@ -45,7 +45,6 @@ env/
 ENV/
 htmlcov/
 mkdocs.yml
-scripts/
 tests/
 Thumbs.db
 venv/
