@@ -4,7 +4,6 @@ uvx uv-upgrade
 
 ## Welcome
 
-
 ```bash
 uv venv .venv --python 3.10 --clear && source .venv/bin/activate
 uv sync && uv build --verbose
@@ -15,7 +14,7 @@ uv sync && uv build --verbose
 ```bash
 docker build . --tag ibc
 syft scan ibc -o json=sbom.json
-grype sbom:sbom.json 
+grype sbom:sbom.json
 ```
 
 ## Fixing packages vuln
@@ -30,6 +29,7 @@ uvx uv-upgrade
 ## Command
 
 ```bash
+echo
 ```
 
 ## Reference
