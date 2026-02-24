@@ -65,9 +65,6 @@ curl -X "POST" "https://dependencytrack.local.irishlab.io" \
 ## Fixing packages vuln
 
 ```bash
-# fix pyproject.toml
-uvx uv-upx upgrade run
-uv export --no-dev --format requirements.txt > requirements.txt
 docker build . --tag ibc
 syft scan ibc --output cyclonedx-json=sbom.json
 ```

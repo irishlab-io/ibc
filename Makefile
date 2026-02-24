@@ -91,3 +91,7 @@ sync:
 
 type:
 	uv run ty check $$(git diff --name-only --cached -- '*.py')
+
+upgrade:
+	uvx uv-upx upgrade run
+	uv export --no-dev --format requirements.txt > requirements.txt
