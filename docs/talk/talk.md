@@ -2,12 +2,36 @@
 
 ## Welcome
 
+- Vulnerability Management: Quickly identify which applications are affected when new vulnerabilities are discovered
+- License Compliance: Track open source licenses across your organization
+- Supply Chain Security: Understand your software’s dependency tree
+- Regulatory Compliance: Meet requirements like US Executive Order 14028, Canadian Bill C-26, and many industry standards and best practices
+
+- CycloneDX (OWASP)
+- SPDX (Linux Foundation)
+- SWID Tags (ISO/IEC 19770-2)
+
+## The project
+
+Talk about IBC a little bit.
+
 ```bash
 uv venv .venv --python 3.10 --clear && source .venv/bin/activate
 uv sync && uv build --verbose
+docker build . --tag ibc
 ```
 
 ## Some tools
+
+Syft is a powerful CLI tool and library for generating SBOMs from container images and filesystems. It supports multiple formats.
+Grype is a vulnerability scanner that works hand-in-hand with Syft. It can scan container images, filesystems, and SBOMs to identify known vulnerabilities from multiple databases.
+
+```bash
+curl -sSfL https://get.anchore.io/syft | sudo sh -s -- -b /usr/local/bin
+curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin
+syft version
+grype version
+```
 
 ```bash
 syft scan docker.io/python:3.10.11-bullseye --output cyclonedx-json=sbom.json
@@ -75,16 +99,17 @@ docker build . --tag ibc
 syft scan ibc --output cyclonedx-json=sbom.json
 ```
 
+## Wrap up
+
+1. Generates your SBOM during CI
+2. Store your SBOM in a central location (DTrack is nice and free)
+3. Implement simple and easy Policies
+4. Move the needle down
+5. Look into harden images
+
 ---
-
-## Command
-
-```bash
-echo
-```
 
 ## Reference
 
-- [Pip-Audit](https://github.com/pypa/pip-audit); audits Python environments, requirements files and dependency trees for known security vulnerabilities, and can automatically fix them
 - [Syft](https://github.com/anchore/syft); a CLI tool and library for generating a Software Bill of Materials from container images and filesystems
 - [Grype](https://github.com/anchore/grype); A vulnerability scanner for container images and filesystems

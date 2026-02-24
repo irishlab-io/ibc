@@ -81,7 +81,7 @@ sbom-generate:
 	syft scan ibc --output cyclonedx-json=sbom.json
 
 sbom-push:
-	echo "Pushing SBOM to Dependency-Track..."
+	dtrack-cli --server https://dependencytrack.local.irishlab.io --api-key ${DEPENDENCYTRACK_TOKEN} --project-name "A-demo-test" --project-version "0.0.1" --bom-path sbom.json --auto-create true
 
 setup:
 	uv venv .venv --python 3.10 --clear
