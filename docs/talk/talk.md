@@ -11,16 +11,6 @@
 - SPDX (Linux Foundation)
 - SWID Tags (ISO/IEC 19770-2)
 
-## The project
-
-Talk about IBC a little bit.
-
-```bash
-uv venv .venv --python 3.10 --clear && source .venv/bin/activate
-uv sync && uv build --verbose
-docker build . --tag ibc
-```
-
 ## Some tools
 
 Syft is a powerful CLI tool and library for generating SBOMs from container images and filesystems. It supports multiple formats.
@@ -44,6 +34,15 @@ Talk about DTrack a bit...
 
 ## Let's ship a container
 
+Talk about IBC a little bit.
+
+```bash
+uv venv .venv --python 3.10 --clear && source .venv/bin/activate
+uv sync && uv build --verbose
+```
+
+Build the first version of IBC
+
 ```bash
 docker build . --tag ibc
 syft scan ibc --output cyclonedx-json=sbom.json
@@ -65,6 +64,7 @@ curl -X "POST" "https://dependencytrack.local.irishlab.io" \
 ## Fixing packages vuln
 
 ```bash
+# fix pyproject.toml
 docker build . --tag ibc
 syft scan ibc --output cyclonedx-json=sbom.json
 ```

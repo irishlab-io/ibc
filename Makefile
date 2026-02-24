@@ -30,7 +30,6 @@ docker:
 talk:
 	$(MAKE) docker-quick
 	$(MAKE) sbom-generate
-	$(MAKE) sbom-analyse
 	$(MAKE) sbom-push
 
 run:
@@ -93,5 +92,6 @@ type:
 	uv run ty check $$(git diff --name-only --cached -- '*.py')
 
 upgrade:
+	sed -i 's/==/>=/' pyproject.toml
 	uvx uv-upx upgrade run
 	uv export --no-dev --format requirements.txt > requirements.txt
