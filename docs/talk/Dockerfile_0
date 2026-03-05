@@ -3,6 +3,6 @@ FROM docker.io/python:3.10.11-bullseye AS builder
 
 WORKDIR /app
 
-COPY app.sh .
+COPY scripts/app.sh .
 
 CMD ["./app.sh"]
