@@ -29,7 +29,7 @@ repos:
         stages:
           - manual
   - repo: https://github.com/commitizen-tools/commitizen
-    rev: v4.13.8
+    rev: v4.13.9
     hooks:
       - id: commitizen
         name: "commitizen | validate commit messages"
@@ -57,7 +57,7 @@ repos:
           - --autofix
           - --no-ensure-ascii
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.47.0
+    rev: v0.48.0
     hooks:
       - id: markdownlint
         name: "md | lint: run markdownlint-cli"
@@ -83,13 +83,13 @@ repos:
           (?x)
           ^mkdocs.yml
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.10.4
+    rev: 0.10.8
     hooks:
       - id: uv-export
         name: "python | uv: export dependencies"
         args: [--no-dev, --output-file, requirements.txt]
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.2
+    rev: v0.15.5
     hooks:
       - id: ruff-check
         name: "python | lint: run ruff-check"
