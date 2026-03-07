@@ -18,80 +18,29 @@ concurrency:
 
 jobs:
 
-  hello:
-    name: Call Hello World Reusable Workflow
-    uses: mighty-muffin/.github/.github/workflows/reusable-hello-world.yml@main
-
-  sdlc_scan:
-    name: SDLC Scan
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-
-    steps:
-      - name: Run SDLC Scan
-        id: sdlc
-        run: |
-          echo Run SDLC Scan
-          echo "::warning::Must implement a SDLC scan mechanism."
-        shell: bash
-
   pre-commit:
-    name: Pre-Commit
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    name: Call Prek
+    uses: irishlab-io/.github/.github/workflows/reusable-prek.yml@main
+    with:
+      skips: "pytest, uv-export"
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Run Pre-Commit Checks
-        id: precommit
-        uses: ./.github/actions/precommit
-        with:
-          skip: "pytest, uv-export"
-        continue-on-error: true
+  secret:
+    needs:
+      - pre-commit
+    name: Call Git Guardian
+    uses: irishlab-io/.github/.github/workflows/reusable-gitguardian.yml@main
+    secrets: inherit
 
   code_build:
     needs:
       - pre-commit
-    name: Build & Unit Test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04]
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: Install UV
-        uses: astral-sh/setup-uv@61cb8a9741eeb8a550a1b8544337180c0fc8476b # v7.2.0
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-          version: 0.9.18
-
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
-        with:
-          python-version: "3.10"
-
-      - name: Install dependencies for scanning
-        run: |
-          uv venv .venv --python 3.10
-          uv pip install --no-cache-dir -r requirements.txt
-        shell: bash
-
-      - name: Pytest - Run Unit Test
-        id: test
-        run: |
-          uv pip install pytest pytest-cov pytest-django pytest-mock pytest-xdist
-          uv run pytest -m "not e2e"
-        shell: bash
-        continue-on-error: true
+    name: Call Python UV (Build & Unit Test)
+    uses: irishlab-io/.github/.github/workflows/reusable-python-uv.yml@main
+    with:
+      os-matrix: '["ubuntu-24.04"]'
+      python-version-matrix: '["3.10"]'
+      pytest-enable: true
+      pytest-marker-excluded: "e2e"
 
   code_scan:
     needs:
