@@ -1,0 +1,20 @@
+---
+name: CI - Repository
+run-name: Continuous Integration for ${{ github.repository }} on ${{ github.head_ref || github.ref_name }} by ${{ github.actor }}
+
+on: # yamllint disable-line rule:truthy
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+
+  pinned-actions:
+    name: Call GH Pinned Actions
+    uses: irishlab-io/.github/.github/workflows/reusable-gh-pin-actions.yml@main
+    with:
+      allowlist: "${{ github.repository_owner }}/"
