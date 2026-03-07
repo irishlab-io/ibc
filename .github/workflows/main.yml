@@ -32,6 +32,9 @@ jobs:
     timeout-minutes: 5
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
       - name: Run SDLC Scan
         id: sdlc
         run: |
@@ -39,26 +42,18 @@ jobs:
           echo "::warning::Must implement a SDLC scan mechanism."
         shell: bash
 
-  pre-commit:
-    if: ${{ ! startsWith(github.event.head_commit.message, 'bump:') }}
-    name: Pre-Commit
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
       - name: Run Sanity Check
         uses: ./.github/actions/sanity
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           detect-changes: "false" # DO NOT ENABLE THIS ACTION
 
-      - name: Call Prek
-        uses: irishlab-io/.github/.github/workflows/reusable-prek.yml@main
-        with:
-          skips: "pytest, uv-export"
+  pre-commit:
+    if: ${{ ! startsWith(github.event.head_commit.message, 'bump:') }}
+    name: Call Prek
+    uses: irishlab-io/.github/.github/workflows/reusable-prek.yml@main
+    with:
+      skips: "pytest, uv-export"
 
   secret:
     if: ${{ ! startsWith(github.event.head_commit.message, 'bump:') }}
