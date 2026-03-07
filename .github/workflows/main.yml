@@ -1,5 +1,6 @@
 ---
 name: CI - Main
+run-name: Continuous Integration on ${{ github.head_ref || github.ref_name }} by ${{ github.actor }}
 
 on: # yamllint disable-line rule:truthy
   push:
@@ -54,41 +55,18 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           detect-changes: "false" # DO NOT ENABLE THIS ACTION
 
-      - name: Run Pre-Commit Checks
-        id: precommit
-        uses: ./.github/actions/prek
+      - name: Call Prek
+        uses: irishlab-io/.github/.github/workflows/reusable-prek.yml@main
         with:
-          skip: "pytest, uv-export"
-        continue-on-error: true
+          skips: "pytest, uv-export"
 
   secret:
     if: ${{ ! startsWith(github.event.head_commit.message, 'bump:') }}
     needs:
       - pre-commit
-    name: Secret Scanning
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-
-      - name: GitGuardian scan
-        id: secret
-        uses: GitGuardian/ggshield/actions/secret@1ed9bbc4eda6459a090b80efb4cfcc4112693a38 # v1.46.0
-        env:
-          GITHUB_PUSH_BEFORE_SHA: ${{ github.event.before }}
-          GITHUB_PUSH_BASE_SHA: ${{ github.event.base }}
-          GITHUB_PULL_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-          GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
-        continue-on-error: true
-
-      - name: Check status of potentially failing step and issue warning
-        if: steps.secret.outcome == 'failure'
-        run: |
-          echo "::error::The previous step detected potential secrets in the code. Please review the scan report above."
-        shell: bash
+    name: Call Git Guardian
+    uses: irishlab-io/.github/.github/workflows/reusable-gitguardian.yml@main
+    secrets: inherit
 
   code_build:
     if: ${{ ! startsWith(github.event.head_commit.message, 'bump:') }}
