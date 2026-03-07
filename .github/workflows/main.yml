@@ -73,6 +73,7 @@ jobs:
       os-matrix: '["ubuntu-24.04"]'
       python-version-matrix: '["3.10"]'
       pytest-enable: true
+      playwright-enable: true
 
   code_scan:
     if: ${{ ! startsWith(github.event.head_commit.message, 'bump:') }}
