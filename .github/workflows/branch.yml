@@ -1,5 +1,6 @@
 ---
 name: CI - Branches
+run-name: Continuous Integration on branch ${{ github.head_ref || github.ref_name }} by ${{ github.actor }}
 
 on: # yamllint disable-line rule:truthy
   push:
