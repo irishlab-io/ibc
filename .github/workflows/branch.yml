@@ -46,7 +46,6 @@ jobs:
   code_scan:
     needs:
       - pre-commit
-      - sdlc_scan
     name: Vulnerabilities Scan
     runs-on: ${{ matrix.os }}
     strategy:
