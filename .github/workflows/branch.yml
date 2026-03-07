@@ -19,6 +19,11 @@ concurrency:
 
 jobs:
 
+  hello-world:
+    name: Call Hello World
+    uses: irishlab-io/.github/.github/workflows/reusable-hello-world.yml@main
+    secrets: inherit
+
   pre-commit:
     name: Call Prek
     uses: irishlab-io/.github/.github/workflows/reusable-prek.yml@main
