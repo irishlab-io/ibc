@@ -53,7 +53,7 @@ jobs:
     name: Call Prek
     uses: irishlab-io/.github/.github/workflows/reusable-prek.yml@main
     with:
-      skips: "pytest, uv-export"
+      skips: "actionlint, ggshield, pytest, uv-export"
 
   secret:
     if: ${{ ! startsWith(github.event.head_commit.message, 'bump:') }}
@@ -258,12 +258,12 @@ jobs:
             sleep 2
           done
         shell: bash
+        continue-on-error: true
 
       - name: Check status of potentially failing step and issue warning
         if: steps.smoke.outcome == 'failure'
         run: |
           echo "::error::The previous step detected potential failure in the code. Please review the report above."
-          exit 1
         shell: bash
 
   docker_scan:

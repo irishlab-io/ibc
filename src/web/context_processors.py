@@ -12,11 +12,10 @@ def version_info(request) -> dict[str, Any]:
     Returns:
         Dictionary with git_commit and repo_url keys
     """
-    context = {
+    return {
         "git_commit": get_git_commit(),
         "repo_url": get_repo_url(),
     }
-    return context
 
 
 def get_git_commit() -> str:
@@ -28,7 +27,7 @@ def get_git_commit() -> str:
 
     # Fall back to git command
     try:
-        commit = (
+        return (
             subprocess.check_output(
                 ["git", "rev-parse", "--short", "HEAD"],
                 stderr=subprocess.DEVNULL,
@@ -37,7 +36,6 @@ def get_git_commit() -> str:
             .decode("utf-8")
             .strip()
         )
-        return commit
     except (subprocess.CalledProcessError, FileNotFoundError):
         return "unknown"
 

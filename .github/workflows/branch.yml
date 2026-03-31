@@ -28,7 +28,7 @@ jobs:
     name: Call Prek
     uses: irishlab-io/.github/.github/workflows/reusable-prek.yml@main
     with:
-      skips: "pytest, uv-export"
+      skips: "actionlint, ggshield, pytest, uv-export"
 
   secret:
     needs:

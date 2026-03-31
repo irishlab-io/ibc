@@ -87,7 +87,7 @@ class AdminView(TemplateView):
     template_name = "admin.html"
 
     def get_context_data(self, *args, **kwargs):
-        context = super(AdminView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         principal = self.request.user
         context["account"] = AccountService.find_users_by_username(principal.username)[0]
         context["accounts"] = AccountService.find_all_users()
@@ -103,7 +103,7 @@ class ActivityView(TemplateView):
         return self.render_to_response(context)
 
     def get_context_data(self, *args, **kwargs):
-        context = super(ActivityView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         principal = self.request.user
         account = AccountService.find_users_by_username(principal.username)[0]
         cash_accounts = CashAccountService.find_cash_accounts_by_username(principal.username)
@@ -117,7 +117,7 @@ class ActivityView(TemplateView):
         reverse_fist_cash_account_transfers = list(reversed(first_cash_account_transfers))
         context["account"] = account
         context["cashAccounts"] = cash_accounts
-        context["cashAccount"] = dict()
+        context["cashAccount"] = {}
         context["firstCashAccountTransfers"] = reverse_fist_cash_account_transfers
         context["actualCashAccountNumber"] = account_number
         return context
@@ -128,7 +128,7 @@ class ActivityCreditView(TemplateView):
     template_name = "creditActivity.html"
 
     def get_context_data(self, *args, **kwargs):
-        context = super(ActivityCreditView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         principal = self.request.user
         number = self.request.GET["number"]
         account = AccountService.find_users_by_username(principal.username)[0]
@@ -142,7 +142,7 @@ class DashboardView(TemplateView):
     template_name = "dashboard.html"
 
     def get_context_data(self, *args, **kwargs):
-        context = super(DashboardView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         principal = self.request.user
         context["account"] = AccountService.find_users_by_username(principal.username)[0]
         context["cashAccounts"] = CashAccountService.find_cash_accounts_by_username(principal.username)
@@ -155,7 +155,7 @@ class UserDetailView(TemplateView):
     template_name = "userDetail.html"
 
     def get_context_data(self, *args, **kwargs):
-        context = super(UserDetailView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         principal = self.request.user
         accounts = AccountService.find_users_by_username(principal.username)
         context["account"] = accounts[0]
@@ -263,7 +263,7 @@ class TransferView(TemplateView):
         return response
 
     def get_context_data(self, *args, **kwargs):
-        context = super(TransferView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         principal = self.request.user
         context["account"] = AccountService.find_users_by_username(principal.username)[0]
         context["cashAccounts"] = CashAccountService.find_cash_accounts_by_username(principal.username)
@@ -296,7 +296,7 @@ class TransferView(TemplateView):
         context = {
             "account": accounts[0],
             "transferbean": transfer,
-            "operationConfirm": dict(),
+            "operationConfirm": {},
         }
         return HttpResponse(template.render(context, request))
 
