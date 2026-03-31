@@ -19,15 +19,6 @@ repos:
     hooks:
       - id: identity
         name: "meta | pre-commit hooks"
-        stages:
-          - manual
-  - repo: https://github.com/gitguardian/ggshield
-    rev: v1.48.0
-    hooks:
-      - id: ggshield
-        name: "security | ggshield: scan for secrets"
-        stages:
-          - manual
   - repo: https://github.com/commitizen-tools/commitizen
     rev: v4.13.9
     hooks:
@@ -35,6 +26,11 @@ repos:
         name: "commitizen | validate commit messages"
         stages:
           - commit-msg
+  - repo: https://github.com/gitguardian/ggshield
+    rev: v1.49.0
+    hooks:
+      - id: ggshield
+        name: "security | ggshield: scan for secrets"
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -43,19 +39,29 @@ repos:
         args: [--maxkb=2048]
       - id: check-json
         name: "general | check JSON files"
+      - id: check-toml
+        name: "general | check TOML files"
+      - id: check-xml
+        name: "general | check XML files"
+      - id: check-yaml
+        name: "general | check YAML files"
       - id: end-of-file-fixer
         name: "general | fix end of file"
+      - id: forbid-new-submodules
+        name: "git | forbid new submodules"
+      - id: forbid-submodules
+        name: "git | forbid submodules usage"
       - id: mixed-line-ending
         name: "general | fix line ending"
         args:
           - --fix=auto
-      - id: trailing-whitespace
-        name: "general | remove trailing whitespace"
       - id: pretty-format-json
         name: "general | prettify JSON files"
         args:
           - --autofix
           - --no-ensure-ascii
+      - id: trailing-whitespace
+        name: "general | remove trailing whitespace"
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.48.0
     hooks:
@@ -83,13 +89,16 @@ repos:
           (?x)
           ^mkdocs.yml
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.10.9
+    rev: 0.11.2
     hooks:
       - id: uv-export
         name: "python | uv: export dependencies"
-        args: [--no-dev, --output-file, requirements.txt]
+        args:
+          - --no-dev
+          - --output-file
+          - requirements.txt
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.5
+    rev: v0.15.8
     hooks:
       - id: ruff-check
         name: "python | lint: run ruff-check"
@@ -109,12 +118,17 @@ repos:
           ^tests/.*
         stages:
           - manual
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+        name: "gh-action | lint: run actionlint"
   - repo: local
     hooks:
       - id: pytest
         name: "python | test: run pytest"
         entry: |
-          uv run pytest
+          uv run pytest -m "not e2e" --color=yes
         language: system
         types: [python]
         pass_filenames: false
