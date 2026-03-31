@@ -117,7 +117,7 @@ class ActivityView(TemplateView):
         reverse_fist_cash_account_transfers = list(reversed(first_cash_account_transfers))
         context["account"] = account
         context["cashAccounts"] = cash_accounts
-        context["cashAccount"] = dict()
+        context["cashAccount"] = {}
         context["firstCashAccountTransfers"] = reverse_fist_cash_account_transfers
         context["actualCashAccountNumber"] = account_number
         return context
@@ -296,7 +296,7 @@ class TransferView(TemplateView):
         context = {
             "account": accounts[0],
             "transferbean": transfer,
-            "operationConfirm": dict(),
+            "operationConfirm": {},
         }
         return HttpResponse(template.render(context, request))
 

@@ -9,13 +9,13 @@ class Migration(migrations.Migration):
     initial = True
 
     @transaction.atomic
-    def import_data(apps, schema_editor):
+    def import_data(self, schema_editor):
         with open(os.path.join(os.path.dirname(__file__), "data.sql")) as f:
             data = f.read()
             with connection.cursor() as cursor:
                 for sql in filter(
                     lambda text: len(text) > 0,
-                    map(lambda text: text.strip(), data.split(";")),
+                    (text.strip() for text in data.split(";")),
                 ):
                     cursor.execute(sql)
 
