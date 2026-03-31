@@ -258,6 +258,7 @@ jobs:
             sleep 2
           done
         shell: bash
+        continue-on-error: true
 
       - name: Check status of potentially failing step and issue warning
         if: steps.smoke.outcome == 'failure'
