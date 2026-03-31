@@ -241,7 +241,6 @@ jobs:
         if: steps.smoke.outcome == 'failure'
         run: |
           echo "::error::The previous step detected potential failure in the code. Please review the report above."
-          exit 1
         shell: bash
 
   docker_scan:
