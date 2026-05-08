@@ -5,9 +5,7 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-      day: "sunday"
-      time: "01:00"
-      timezone: "America/Toronto"
+    open-pull-requests-limit: 0 # disable auto PRs since this is a learning project and we want to manually review updates
     cooldown:
       default-days: 7
     labels:
@@ -26,9 +24,7 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-      day: "sunday"
-      time: "01:00"
-      timezone: "America/Toronto"
+    open-pull-requests-limit: 10 # disable auto PRs since this is a learning project and we want to manually review updates
     cooldown:
       default-days: 7
     labels:
@@ -47,9 +43,7 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-      day: "sunday"
-      time: "01:00"
-      timezone: "America/Toronto"
+    open-pull-requests-limit: 10 # disable auto PRs since this is a learning project and we want to manually review updates
     labels:
       - "dependencies"
       - "pre-commit"
@@ -69,6 +63,7 @@ updates:
       day: "sunday"
       time: "01:00"
       timezone: "America/Toronto"
+    open-pull-requests-limit: 0
     cooldown:
       default-days: 7
     labels:
