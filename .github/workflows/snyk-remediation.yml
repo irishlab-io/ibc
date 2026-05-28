@@ -1,0 +1,131 @@
+---
+name: Snyk Issue Remediation
+run-name: Snyk remediation for issue #${{ github.event.issue.number }}
+
+on: # yamllint disable-line rule:truthy
+  issues:
+    types:
+      - opened
+      - reopened
+      - labeled
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  remediation:
+    if: >-
+      contains(github.event.issue.labels.*.name, 'snyk') &&
+      contains(github.event.issue.labels.*.name, 'ai-remediation') &&
+      contains(github.event.issue.body, '<!-- snyk-finding-key:') &&
+      (
+        github.event.action == 'opened' ||
+        github.event.action == 'reopened' ||
+        (
+          github.event.action == 'labeled' &&
+          (
+            github.event.label.name == 'snyk' ||
+            github.event.label.name == 'ai-remediation'
+          )
+        )
+      )
+    name: Generate Remediation Starter
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git Credentials
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+        shell: bash
+
+      - name: Generate AI Remediation Starter
+        id: proposal
+        env:
+          GH_MODELS_MODEL: ${{ vars.GH_MODELS_MODEL }}
+          GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
+        run: |
+          python scripts/security/snyk_issue_remediation.py \
+            --event-path "$GITHUB_EVENT_PATH" \
+            --workspace "$GITHUB_WORKSPACE" \
+            --run-url "https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --github-output "$GITHUB_OUTPUT"
+        shell: bash
+
+      - name: Check For Existing Remediation PR
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          existing_url="$(
+            gh pr list \
+              --repo "$GITHUB_REPOSITORY" \
+              --head "${GITHUB_REPOSITORY_OWNER}:${{ steps.proposal.outputs.branch-name }}" \
+              --state open \
+              --json url \
+              --jq '.[0].url // ""'
+          )"
+          echo "url=$existing_url" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      - name: Comment On Existing PR
+        if: ${{ steps.existing.outputs.url != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "A remediation draft PR already exists for this Snyk issue: ${{ steps.existing.outputs.url }}"
+        shell: bash
+
+      - name: Check For Existing Branch
+        if: ${{ steps.existing.outputs.url == '' }}
+        id: branch
+        run: |
+          if git ls-remote --exit-code --heads origin "${{ steps.proposal.outputs.branch-name }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
+      - name: Comment On Existing Branch
+        if: ${{ steps.existing.outputs.url == '' && steps.branch.outputs.exists == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "A remediation branch already exists for this Snyk issue: \`${{ steps.proposal.outputs.branch-name }}\`. Review it before creating another draft PR."
+        shell: bash
+
+      - name: Create Remediation Draft Branch
+        if: ${{ steps.existing.outputs.url == '' && steps.branch.outputs.exists == 'false' }}
+        run: |
+          git checkout -b "${{ steps.proposal.outputs.branch-name }}"
+          git add "${{ steps.proposal.outputs.prompt-path }}"
+          git commit -m "ci: add remediation starter for issue #${{ github.event.issue.number }}"
+          git push --set-upstream origin "${{ steps.proposal.outputs.branch-name }}"
+        shell: bash
+
+      - name: Open Draft Pull Request
+        if: ${{ steps.existing.outputs.url == '' && steps.branch.outputs.exists == 'false' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --repo "$GITHUB_REPOSITORY" \
+            --base main \
+            --head "${{ steps.proposal.outputs.branch-name }}" \
+            --draft \
+            --title "${{ steps.proposal.outputs.pr-title }}" \
+            --body-file "${{ steps.proposal.outputs.pr-body-path }}"
+        shell: bash

@@ -44,7 +44,7 @@ At a high level, once a git commit is pushed to the remote repository the variou
 
 - **Pre-Commit:** Check for linting, formatting, and code quality checks
 - **Build Phase:** Run the build, test and container packaging
-- **Security Phase:** Run the SDLC, Secret, SAST, SCA and Container scanning
+- **Security Phase:** Run the SDLC, Secret, SAST, SCA and Container scanning, create Snyk-backed GitHub issues for critical dependency findings, and hand labeled issues to the remediation workflow
 - **Gating Phase:** Check if any failure occurs during the Security Phase
 - **Release Phase:** Trigger the package release once code is merged to `main`
 
@@ -96,3 +96,17 @@ job_name:
       os: [ubuntu-24.04, ubuntu-24.04-arm]
   timeout-minutes: 10
 ```
+
+## Snyk Vulnerability Lifecycle
+
+Critical dependency findings discovered in the SCA phase now use the Snyk CLI against `requirements.txt`.
+Each critical result is synchronized into an issue labeled `security`, `snyk`, and `ai-remediation`.
+
+Those labels become the contract for the follow-up automation:
+
+1. The scan workflow creates or updates a deterministic GitHub issue for each critical finding.
+2. The issue body stores machine-readable markers for the vulnerable package, version, manifest, and recommended fixed version.
+3. The `Snyk Issue Remediation` workflow reacts only to labeled Snyk issues, avoids duplicate draft PRs, and creates an AI-generated remediation starter in `.github/prompt/snyk/`.
+
+When the repository configures `GH_MODELS_TOKEN`, the remediation workflow calls the GitHub Models inference API for the starter proposal.
+If the token is unavailable, the workflow still opens a deterministic fallback starter so the draft PR path remains usable.
