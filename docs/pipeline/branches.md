@@ -102,7 +102,7 @@ Runs build and unit test with `continue-on-error: true` to provide feedback with
 
 ### Vulnerability Scan
 
-If required, implement the necessary steps to enable SAST and SCA Scan in the phase.
+The branch workflow keeps the placeholder SAST step and now runs Snyk CLI for the SCA phase.
 This matrix steps runs on both `ubuntu-24.04` and `ubuntu-24.04-arm`.
 
 ```yaml
@@ -115,11 +115,21 @@ This matrix steps runs on both `ubuntu-24.04` and `ubuntu-24.04-arm`.
 
   - name: Run SCA
     id: sca
-    run: |
-      echo Run SCA
-      echo "::warning::Must implement a dependencies scanning mechanism."
-    shell: bash
+    uses: ./.github/actions/snyk-critical-issues
+    with:
+      snyk-token: ${{ secrets.SNYK_TOKEN }}
+      github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+The Snyk action scans `requirements.txt`, writes machine-readable JSON output, and creates or updates one GitHub issue per critical vulnerability.
+Each synchronized issue receives the labels `security`, `snyk`, and `ai-remediation` so the downstream remediation workflow can trust the issue source.
+
+### Snyk Remediation Drafts
+
+When a synchronized Snyk issue is opened or re-labeled, the `Snyk Issue Remediation` workflow validates the issue markers, checks for an existing draft PR, and then creates a draft branch if none exists.
+If `GH_MODELS_TOKEN` is configured, the workflow uses GitHub Models to generate the starter proposal; otherwise it falls back to a deterministic template.
+Instead of pushing an unreviewed fix directly into the application, the workflow opens a draft pull request with an AI-generated remediation starter committed under `.github/prompt/snyk/`.
+This keeps the workflow agentic while still requiring human review before any dependency upgrade is merged.
 
 ### Container Build
 

@@ -1,0 +1,78 @@
+---
+name: "Snyk Critical Issues"
+description: "Run Snyk CLI and create or update GitHub issues for critical findings"
+author: "mighty-muffin"
+
+inputs:
+  snyk-token:
+    description: "Snyk API token"
+    required: true
+  github-token:
+    description: "GitHub token for issue operations"
+    required: false
+    default: ${{ github.token }}
+  manifest-path:
+    description: "Dependency manifest to scan"
+    required: false
+    default: "requirements.txt"
+  issue-labels:
+    description: "Comma-separated labels for Snyk issues"
+    required: false
+    default: "security,snyk,ai-remediation"
+  create-issues:
+    description: "Create or update GitHub issues for critical findings"
+    required: false
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Snyk CLI
+      run: |
+        npm install --global snyk@1.1299.1
+        snyk --version
+      shell: bash
+
+    - name: Run Snyk Scan
+      id: snyk
+      env:
+        SNYK_TOKEN: ${{ inputs.snyk-token }}
+      run: |
+        mkdir -p .snyk
+        set +e
+        snyk test \
+          --file="${{ inputs.manifest-path }}" \
+          --package-manager=pip \
+          --severity-threshold=critical \
+          --json-file-output=.snyk/critical-results.json
+        exit_code=$?
+        set -e
+
+        echo "exit-code=$exit_code" >> "$GITHUB_OUTPUT"
+
+        if [ "$exit_code" -gt 1 ]; then
+          echo "::error::Snyk scan failed with exit code $exit_code."
+          exit "$exit_code"
+        fi
+      shell: bash
+
+    - name: Sync Critical Vulnerability Issues
+      if: ${{ inputs.create-issues == 'true' }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        python scripts/security/snyk_critical_issues.py \
+          --input .snyk/critical-results.json \
+          --repo "$GITHUB_REPOSITORY" \
+          --api-url "$GITHUB_API_URL" \
+          --run-url "https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+          --workflow-name "$GITHUB_WORKFLOW" \
+          --issue-labels "${{ inputs.issue-labels }}"
+      shell: bash
+
+    - name: Fail On Critical Vulnerabilities
+      if: ${{ steps.snyk.outputs.exit-code == '1' }}
+      run: |
+        echo "::error::Critical vulnerabilities were detected by Snyk."
+        exit 1
+      shell: bash

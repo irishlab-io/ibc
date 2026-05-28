@@ -18,6 +18,7 @@ concurrency:
 
 permissions:
   contents: read
+  issues: write
   packages: write
   pull-requests: write
 
@@ -108,10 +109,10 @@ jobs:
 
       - name: Run SCA Scan
         id: sca
-        run: |
-          echo Run SCA
-          echo "::warning::Must implement a dependencies scanning mechanism."
-        shell: bash
+        uses: ./.github/actions/snyk-critical-issues
+        with:
+          snyk-token: ${{ secrets.SNYK_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   docker_build:
     needs:

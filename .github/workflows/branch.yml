@@ -17,6 +17,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
 
   hello-world:
@@ -92,10 +96,10 @@ jobs:
 
       - name: Run SCA
         id: sca
-        run: |
-          echo Run SCA
-          echo "::warning::Must implement a dependencies scanning mechanism."
-        shell: bash
+        uses: ./.github/actions/snyk-critical-issues
+        with:
+          snyk-token: ${{ secrets.SNYK_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   docker_build:
     needs:
